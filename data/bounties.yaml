@@ -13,7 +13,10 @@
 #   title        Report title
 #   severity     Critical | High | Medium | Low (as rated by the platform/program)
 #   bounty       Payout amount, if disclosed (e.g. "$2,500") — omit if undisclosed
-#   report_url   Link to the public/disclosed report
+#   report_url   Link to the report. For a private vendor SRC portal with no public
+#                report page, use a screenshot of the platform's own confirmed/fixed
+#                status page instead (saved under static/img/bounty-evidence/) so the
+#                proof is viewable without an account.
 #   date         Disclosure date, YYYY-MM-DD
 
 - platform: "Kuaishou SRC"
@@ -21,7 +24,7 @@
   title: "Claw Login device-authorization flaw (no consent issuance + unauthenticated retrieval) enables one-click credential theft"
   severity: "High"
   bounty: ""
-  report_url: "https://security.kuaishou.com/loopDetail?13166"
+  report_url: "/img/bounty-evidence/ksrc-13166.png"
   date: "2026-08-06"
 
 - platform: "Kuaishou SRC"
@@ -29,7 +32,7 @@
   title: "Canvas project allows forcibly adding arbitrary users as collaborators without consent"
   severity: "Low"
   bounty: ""
-  report_url: "https://security.kuaishou.com/loopDetail?13164"
+  report_url: "/img/bounty-evidence/ksrc-13164.png"
   date: "2026-08-07"
 
 - platform: "Kuaishou SRC"
@@ -37,7 +40,7 @@
   title: "Internal /dev/kconf-editor tool exposed to any logged-in user, leaking internal KConf write interface"
   severity: "Low"
   bounty: ""
-  report_url: "https://security.kuaishou.com/loopDetail?13175"
+  report_url: "/img/bounty-evidence/ksrc-13175.png"
   date: "2026-08-07"
 
 - platform: "JD SRC"
@@ -45,5 +48,5 @@
   title: "executeByApiId billing-logic vulnerability (race condition + missing quantity validation + balance-check bypass)"
   severity: "Medium"
   bounty: ""
-  report_url: "https://security.jd.com/#/report/104257"
+  report_url: "/img/bounty-evidence/jsrc-104257.png"
   date: "2026-07-27"
