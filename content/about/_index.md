@@ -33,3 +33,10 @@ My background also includes vulnerability disclosure through vendor Security Res
 ## Affiliations
 
 - TimelineSec (member, team 2) — bug bounty / CTF team
+
+## Platform Handles
+
+Some of my disclosures are credited under a platform-specific reporter handle rather than my real name. For verification purposes, here's the mapping:
+
+- **VulDB / CVE reporter handle: `yunshen`** ("云深" on the Chinese-localized CVE record) — this is the reporter credited in the official [Acknowledgments](https://www.cve.org/CVERecord?id=CVE-2026-86666) section of CVE-2026-86665/86666/86667. The account's [public VulDB profile](https://vuldb.com/user/100191) (no login required, [archived snapshot](/img/vuldb-evidence/yunshen-profile.png)) shows the same three accepted submissions (VDB-399756/399757/399758) against `aircheng-org iWebShop-5` that back those CVEs.
+- **Bugcrowd handle: `equa1`** — see the [public profile](https://bugcrowd.com/h/equa1) linked above.
