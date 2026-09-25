@@ -10,7 +10,7 @@ The turning point came in **March 2026**, when I started porting that red-team m
 
 That experience raised an obvious follow-up question: if AI can attack systems this effectively, how secure is the AI itself? My research now runs on two tracks — using AI-assisted methodology to accelerate traditional vulnerability research (web application security, authorization bypasses, deserialization/RCE), and studying the security of AI systems themselves: prompt injection, adversarial robustness, RAG data exposure, AI agent authorization boundaries, and supply-chain risk hidden in AI-generated code.
 
-My background also includes vulnerability disclosure through vendor Security Response Centers (Kuaishou SRC, JD SRC), CVE-credited findings in open-source projects, blue-team defensive engineering — including participation in China's national 护网 (HuWang) cybersecurity exercises — and a role as a Security Development Engineer at Chaitin Tech (长亭科技).
+My background also includes vulnerability disclosure through vendor Security Response Centers (Kuaishou SRC, JD SRC) and CVE-credited findings in open-source projects.
 
 ## Research Focus
 
@@ -18,15 +18,13 @@ My background also includes vulnerability disclosure through vendor Security Res
 - AI/LLM security: prompt injection, adversarial robustness, RAG data exposure, AI agent authorization boundaries, and supply-chain risk in AI-generated code
 - Web application security (authorization flaws, business logic vulnerabilities, SSRF)
 - Deserialization and RCE chain research
-- Blue-team defense: malware analysis, sandboxing, EDR/behavioral detection, YARA/Suricata rule development
 - Vulnerability disclosure coordination (CNA/vendor SRC workflows)
 - Security tooling for exploit verification and CTF operations
 
 ## Experience
 
 - **March 2026 – Present** — AI Red Teamer (remote, via Mercor) — adversarial jailbreak and prompt-injection testing against frontier LLMs
-- **[Year]** — Threat Intelligence Intern — SecureWorks (Atlanta, GA) — vulnerability research and threat hunting
-- **[Year–Year]** — Security Development Engineer — Chaitin Tech (长亭科技) — blue-team defense engineering, including participation in 护网 (HuWang) national security exercises
+- **Summer 2024 (Junior Year)** — Threat Intelligence Intern — SecureWorks (Atlanta, GA) — vulnerability research and threat hunting
 
 ## Education
 
