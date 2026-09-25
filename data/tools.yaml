@@ -9,15 +9,15 @@
 
 - name: "2026FastjsonPoC"
   description: "Fastjson 1.2.x RCE verification scanner covering 151 gadget-chain/version combinations across the known public disclosure history; confirms exploitability via out-of-band command echo."
-  repo_url: "https://github.com/ThanatosXingYu/2026FastjsonPoC"
+  repo_url: "https://github.com/HAYES-cyber/2026FastjsonPoC"
   language: "Python / Java"
 
 - name: "iChunQiu-CTF-Collector"
   description: "PySide6 desktop tool that collects public leaderboard data from i春秋 CTF competitions into a formatted Excel workbook."
-  repo_url: "https://github.com/ThanatosXingYu/iChunQiu-CTF-Collector"
+  repo_url: "https://github.com/HAYES-cyber/iChunQiu-CTF-Collector"
   language: "Python"
 
 - name: "ZhuLongAgent"
   description: "Local command console for i春秋 CTF competitions: match management, attachment retrieval, and tool orchestration in one workspace."
-  repo_url: "https://github.com/ThanatosXingYu/ZhuLongAgent"
+  repo_url: "https://github.com/HAYES-cyber/ZhuLongAgent"
   language: "Python"

@@ -14,12 +14,12 @@ title: "About"
 
 ## Experience
 
-- **[Year–Year]** — [Role] at [Organization]
+- **[Year–Year]** — Security Researcher — Chaitin Tech (长亭科技), China
 - **[Year–Year]** — [Role] at [Organization]
 
 ## Education
 
-- **[Degree]**, [Field of study] — [Institution], [Year]
+- **[Degree]**, [Security-related field of study] — [University], China, [Year–Year]
 
 ## Affiliations
 
