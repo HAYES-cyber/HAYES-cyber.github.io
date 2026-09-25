@@ -58,7 +58,7 @@ menu:
 params:
   author: "Bryce Alan Hayes"
   handle: "HAYES-cyber"
-  tagline: "Security researcher focused on [research area, e.g. web application security & IoT firmware]."
+  tagline: "Security researcher focused on web application security, business logic flaws, and deserialization/RCE research."
   email: "you@example.com"
   pgpFingerprint: "XXXX XXXX XXXX XXXX XXXX  XXXX XXXX XXXX XXXX XXXX"
   github: "https://github.com/HAYES-cyber"
