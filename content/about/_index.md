@@ -4,23 +4,24 @@ title: "About"
 
 ## Background
 
-[2–3 sentences: who you are, how you got into security research, and what drives you.]
+I'm a security researcher based in China, focused on web application vulnerability research, business-logic flaws, and deserialization/RCE chains. My background includes vulnerability disclosure work through vendor Security Response Centers (Kuaishou SRC, JD SRC) and CVE-credited findings in open-source projects, alongside tool development for exploit verification and CTF workflows. I previously worked as a security researcher at Chaitin Tech (长亭科技).
 
 ## Research Focus
 
-- [Focus area 1, e.g. Web application security]
-- [Focus area 2, e.g. IoT firmware analysis]
-- [Focus area 3, e.g. Browser security]
+- Web application security (authorization flaws, business logic vulnerabilities, SSRF)
+- Deserialization and RCE chain research
+- Vulnerability disclosure coordination (CNA/vendor SRC workflows)
+- Security tooling for exploit verification and CTF operations
 
 ## Experience
 
 - **[Year–Year]** — Security Researcher — Chaitin Tech (长亭科技), China
-- **[Year–Year]** — [Role] at [Organization]
 
 ## Education
 
-- **[Degree]**, [Security-related field of study] — [University], China, [Year–Year]
+- **[Degree]**, [Field of study] — [University name], China, **[Year–Year]**
+  <!-- fill in your actual institution and dates before using this for verification purposes -->
 
 ## Affiliations
 
-[Company / team, if any. Remove this section if not applicable.]
+- TimelineSec (member, team 2) — bug bounty / CTF team
