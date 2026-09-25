@@ -59,7 +59,7 @@ params:
   author: "Bryce Alan Hayes"
   handle: "HAYES-cyber"
   avatar: "/img/avatar.jpg"
-  tagline: "Security researcher focused on web application security, business logic flaws, and deserialization/RCE research."
+  tagline: "Security researcher working both sides of AI and offense — using AI-assisted methodology to accelerate vulnerability research, and studying the security of AI systems themselves."
   email: "1092bunk@gmail.com"
   pgpFingerprint: "XXXX XXXX XXXX XXXX XXXX  XXXX XXXX XXXX XXXX XXXX"
   github: "https://github.com/HAYES-cyber"
