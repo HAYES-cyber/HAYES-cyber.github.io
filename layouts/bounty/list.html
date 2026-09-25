@@ -1,37 +1,32 @@
 {{ define "main" }}
-<h1>{{ .Title }}</h1>
-{{ .Content }}
-{{ $items := sort .Site.Data.bounties "date" "desc" }}
-{{ if $items }}
-<div class="table-wrap">
-<table class="cve-table">
-  <thead>
-    <tr>
-      <th>Platform</th>
-      <th>Program</th>
-      <th>Title</th>
-      <th>Severity</th>
-      <th>Bounty</th>
-      <th>Report</th>
-      <th>Date</th>
-    </tr>
-  </thead>
-  <tbody>
+<div class="wrap">
+  <div class="page-header">
+    <p class="eyebrow">Vendor SRC &amp; Bug Bounty</p>
+    <h1>{{ .Title }}</h1>
+  </div>
+  {{ .Content }}
+  {{ $items := sort .Site.Data.bounties "date" "desc" }}
+  {{ if $items }}
+  <div class="page-stats">
+    <span class="pill">{{ len $items }} reports</span>
+  </div>
+  <ul class="advisory-list table-wrap">
     {{ range $items }}
-    <tr>
-      <td>{{ .platform }}</td>
-      <td>{{ .program }}</td>
-      <td>{{ .title }}</td>
-      <td><span class="sev sev-{{ .severity | urlize }}">{{ .severity }}</span></td>
-      <td>{{ if .bounty }}{{ .bounty }}{{ else }}—{{ end }}</td>
-      <td><a href="{{ .report_url }}" target="_blank" rel="noopener">Report</a></td>
-      <td>{{ .date }}</td>
-    </tr>
+    <li class="advisory-row tier-{{ .severity | lower }}">
+      <span class="advisory-bar"></span>
+      <div class="advisory-main">
+        <span class="advisory-title"><a href="{{ .report_url }}" target="_blank" rel="noopener">{{ .title }}</a></span>
+        <span class="advisory-meta">{{ .platform }} · {{ .program }}{{ if .bounty }} · {{ .bounty }}{{ end }}</span>
+      </div>
+      <div class="advisory-side">
+        <span class="sev sev-{{ .severity | lower }}">{{ .severity }}</span>
+        <span class="advisory-date">{{ .date }}</span>
+      </div>
+    </li>
     {{ end }}
-  </tbody>
-</table>
+  </ul>
+  {{ else }}
+  <p class="empty">No public reports yet.</p>
+  {{ end }}
 </div>
-{{ else }}
-<p class="empty">No public reports yet.</p>
-{{ end }}
 {{ end }}

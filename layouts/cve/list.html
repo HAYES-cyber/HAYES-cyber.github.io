@@ -1,37 +1,34 @@
 {{ define "main" }}
-<h1>{{ .Title }}</h1>
-{{ .Content }}
-{{ $cves := sort .Site.Data.cves "date" "desc" }}
-{{ if $cves }}
-<div class="table-wrap">
-<table class="cve-table">
-  <thead>
-    <tr>
-      <th>CVE</th>
-      <th>Product</th>
-      <th>Type</th>
-      <th>CVSS</th>
-      <th>Advisory</th>
-      <th>Date</th>
-      <th>Write-up</th>
-    </tr>
-  </thead>
-  <tbody>
+<div class="wrap">
+  <div class="page-header">
+    <p class="eyebrow">Vulnerability Research</p>
+    <h1>{{ .Title }}</h1>
+  </div>
+  {{ .Content }}
+  {{ $cves := sort .Site.Data.cves "date" "desc" }}
+  {{ if $cves }}
+  <div class="page-stats">
+    <span class="pill">{{ len $cves }} disclosed</span>
+  </div>
+  <ul class="advisory-list table-wrap">
     {{ range $cves }}
-    <tr>
-      <td><a href="{{ .cve_url }}" target="_blank" rel="noopener">{{ .id }}</a></td>
-      <td>{{ .product }}</td>
-      <td>{{ .type }}</td>
-      <td>{{ .cvss }}</td>
-      <td><a href="{{ .advisory_url }}" target="_blank" rel="noopener">Advisory</a></td>
-      <td>{{ .date }}</td>
-      <td>{{ if .writeup_url }}<a href="{{ .writeup_url }}">Read</a>{{ else }}—{{ end }}</td>
-    </tr>
+    {{ $score := index (split .cvss " ") 0 }}
+    <li class="advisory-row">
+      <span class="advisory-bar"></span>
+      <div class="advisory-main">
+        <span class="advisory-id"><a href="{{ .cve_url }}" target="_blank" rel="noopener">{{ .id }}</a></span>
+        <span class="advisory-title">{{ .product }}</span>
+        <span class="advisory-meta">{{ .type }} · <a href="{{ .advisory_url }}" target="_blank" rel="noopener">Vendor advisory</a>{{ if .writeup_url }} · <a href="{{ .writeup_url }}">Write-up</a>{{ end }}</span>
+      </div>
+      <div class="advisory-side">
+        <span class="pill" title="{{ .cvss }}">CVSS {{ $score }}</span>
+        <span class="advisory-date">{{ .date }}</span>
+      </div>
+    </li>
     {{ end }}
-  </tbody>
-</table>
+  </ul>
+  {{ else }}
+  <p class="empty">No disclosures published yet.</p>
+  {{ end }}
 </div>
-{{ else }}
-<p class="empty">No disclosures published yet.</p>
-{{ end }}
 {{ end }}

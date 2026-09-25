@@ -1,18 +1,28 @@
 {{ define "main" }}
-<h1>{{ .Title }}</h1>
-{{ .Content }}
-{{ $tools := .Site.Data.tools }}
-{{ if $tools }}
-<ul class="tool-list">
-  {{ range $tools }}
-  <li>
-    <a href="{{ .repo_url }}" target="_blank" rel="noopener">{{ .name }}</a>
-    {{ with .language }}<span class="lang">{{ . }}</span>{{ end }}
-    <p>{{ .description }}</p>
-  </li>
+<div class="wrap">
+  <div class="page-header">
+    <p class="eyebrow">Open Source</p>
+    <h1>{{ .Title }}</h1>
+  </div>
+  {{ .Content }}
+  {{ $tools := .Site.Data.tools }}
+  {{ if $tools }}
+  <div class="page-stats">
+    <span class="pill">{{ len $tools }} repositories</span>
+  </div>
+  <ul class="tool-grid">
+    {{ range $tools }}
+    <li class="tool-card">
+      <div class="tool-card-head">
+        <h3><a href="{{ .repo_url }}" target="_blank" rel="noopener">{{ .name }} {{ partial "icon.html" "external" }}</a></h3>
+        {{ with .language }}<span class="lang">{{ . }}</span>{{ end }}
+      </div>
+      <p>{{ .description }}</p>
+    </li>
+    {{ end }}
+  </ul>
+  {{ else }}
+  <p class="empty">No tools published yet.</p>
   {{ end }}
-</ul>
-{{ else }}
-<p class="empty">No tools published yet.</p>
-{{ end }}
+</div>
 {{ end }}

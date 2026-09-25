@@ -1,14 +1,27 @@
 <header class="site-header">
-  <div class="wrap">
-    <a class="brand" href="{{ "/" | relLangURL }}">{{ .Site.Params.author }}</a>
+  <div class="wrap-wide">
+    <a class="brand" href="{{ "/" | relLangURL }}">
+      <span class="brand-mark">B</span>
+      <span>{{ .Site.Params.author }}</span>
+    </a>
     <nav aria-label="Main navigation">
-      <button id="nav-toggle" class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
       <ul id="nav-menu">
         {{ range .Site.Menus.main }}
-        <li><a href="{{ .URL | relLangURL }}"{{ if $.IsMenuCurrent "main" . }} class="active" aria-current="page"{{ end }}>{{ .Name }}</a></li>
+        {{ $isActive := eq $.RelPermalink .URL }}
+        {{ if and (not $isActive) (ne .URL "/") }}{{ $isActive = strings.HasPrefix $.RelPermalink .URL }}{{ end }}
+        <li><a href="{{ .URL | relLangURL }}"{{ if $isActive }} class="active" aria-current="page"{{ end }}>{{ .Name }}</a></li>
         {{ end }}
       </ul>
     </nav>
-    <button id="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme">🌓</button>
+    <div class="header-actions">
+      {{ with .Site.Params.github }}
+      <a class="icon-btn" href="{{ . }}" target="_blank" rel="noopener" aria-label="GitHub">{{ partial "icon.html" "github" }}</a>
+      {{ end }}
+      <button id="theme-toggle" class="icon-btn" aria-label="Toggle color theme" title="Toggle color theme">
+        <span class="icon-sun">{{ partial "icon.html" "sun" }}</span>
+        <span class="icon-moon">{{ partial "icon.html" "moon" }}</span>
+      </button>
+      <button id="nav-toggle" class="icon-btn nav-toggle" aria-label="Toggle menu" aria-expanded="false">{{ partial "icon.html" "menu" }}</button>
+    </div>
   </div>
 </header>

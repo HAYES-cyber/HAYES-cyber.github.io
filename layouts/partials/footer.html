@@ -1,13 +1,13 @@
 <footer class="site-footer">
-  <div class="wrap">
-    <p>
-      &copy; {{ now.Year }} {{ .Site.Params.author }}
-      {{ with .Site.Params.github }} · <a href="{{ . }}" target="_blank" rel="noopener">GitHub</a>{{ end }}
-      {{ with .Site.Params.linkedin }} · <a href="{{ . }}" target="_blank" rel="noopener">LinkedIn</a>{{ end }}
-      {{ with .Site.Params.hackerone }} · <a href="{{ . }}" target="_blank" rel="noopener">HackerOne</a>{{ end }}
-      {{ with .Site.Params.bugcrowd }} · <a href="{{ . }}" target="_blank" rel="noopener">Bugcrowd</a>{{ end }}
-      · <a href="{{ "index.xml" | relURL }}">RSS</a>
-    </p>
+  <div class="wrap-wide">
+    <p class="footer-copy">&copy; {{ now.Year }} {{ .Site.Params.author }} · Built with Hugo</p>
+    <div class="footer-links">
+      {{ with .Site.Params.github }}<a class="icon-btn" href="{{ . }}" target="_blank" rel="noopener" aria-label="GitHub">{{ partial "icon.html" "github" }}</a>{{ end }}
+      {{ with .Site.Params.linkedin }}<a class="icon-btn" href="{{ . }}" target="_blank" rel="noopener" aria-label="LinkedIn">in</a>{{ end }}
+      {{ with .Site.Params.hackerone }}<a class="icon-btn" href="{{ . }}" target="_blank" rel="noopener" aria-label="HackerOne">{{ partial "icon.html" "bug" }}</a>{{ end }}
+      {{ with .Site.Params.bugcrowd }}<a class="icon-btn" href="{{ . }}" target="_blank" rel="noopener" aria-label="Bugcrowd">{{ partial "icon.html" "bug" }}</a>{{ end }}
+      <a class="icon-btn" href="{{ "index.xml" | relURL }}" aria-label="RSS feed">{{ partial "icon.html" "rss" }}</a>
+    </div>
   </div>
   <script src="{{ "js/theme.js" | relURL }}"></script>
 </footer>

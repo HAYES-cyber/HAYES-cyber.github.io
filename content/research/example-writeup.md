@@ -4,7 +4,7 @@ date: 2024-01-01
 tags: ["example", "template"]
 summary: "A placeholder post demonstrating layout, syntax highlighting, and table of contents. Replace or delete before publishing."
 toc: true
-draft: false
+draft: true
 ---
 
 > **Note:** This is a template post included to demonstrate formatting. Replace it with your own research, or set `draft: true` in the front matter to hide it from the live site.

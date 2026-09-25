@@ -1,64 +1,119 @@
 {{ define "main" }}
+{{ $cves := .Site.Data.cves }}
+{{ $bounties := .Site.Data.bounties }}
+{{ $tools := .Site.Data.tools }}
+{{ $posts := where .Site.RegularPages "Section" "research" }}
+{{ $posts = $posts.ByDate.Reverse }}
+
 <section class="hero">
-  <h1>{{ .Site.Params.author }}</h1>
-  <p class="tagline">{{ .Site.Params.tagline }}</p>
+  <div class="hero-bg"></div>
+  <div class="wrap-wide">
+    <div class="hero-kicker"><span class="dot"></span> Offense &amp; Defense Security Research</div>
+    <h1>{{ .Site.Params.author }} <span class="accent">// security research</span></h1>
+    <p class="tagline">{{ .Site.Params.tagline }}</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="{{ "/research/" | relURL }}">Read the research {{ partial "icon.html" "arrow-right" }}</a>
+      <a class="btn btn-outline" href="{{ "/cve/" | relURL }}">View CVE disclosures</a>
+      {{ with .Site.Params.github }}<a class="btn btn-outline" href="{{ . }}" target="_blank" rel="noopener">{{ partial "icon.html" "github" }} GitHub</a>{{ end }}
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><span class="num">{{ len $cves }}</span><span class="label">CVE disclosures</span></div>
+      <div class="stat-card"><span class="num">{{ len $bounties }}</span><span class="label">Bounty reports</span></div>
+      <div class="stat-card"><span class="num">{{ len $tools }}</span><span class="label">OSS tools</span></div>
+      <div class="stat-card"><span class="num">{{ len $posts }}</span><span class="label">Write-ups</span></div>
+    </div>
+  </div>
 </section>
 
-{{ if .Content }}<div class="home-intro">{{ .Content }}</div>{{ end }}
+<div class="wrap-wide">
+  {{ if .Content }}<div class="home-intro">{{ .Content }}</div>{{ end }}
 
-<section class="home-section">
-  <h2>Latest Research</h2>
-  {{ $posts := where .Site.RegularPages "Section" "research" }}
-  {{ $posts = $posts.ByDate.Reverse }}
-  {{ if $posts }}
-  <ul class="post-list">
-    {{ range first 3 $posts }}
-    <li>
-      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
-      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
-      {{ if .Params.summary }}<p>{{ .Params.summary }}</p>{{ end }}
-    </li>
+  <section class="home-section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">01 · Research</p>
+        <h2>Latest write-ups</h2>
+      </div>
+      <a class="more" href="{{ "/research/" | relURL }}">All research {{ partial "icon.html" "arrow-right" }}</a>
+    </div>
+    {{ if $posts }}
+    <ul class="card-grid">
+      {{ range first 3 $posts }}
+      <li class="post-card">
+        <span class="post-card-date">{{ .Date.Format "2006-01-02" }} · {{ .ReadingTime }} min read</span>
+        <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
+        {{ if .Params.summary }}<p>{{ .Params.summary }}</p>{{ else }}<p></p>{{ end }}
+        {{ with .Params.tags }}
+        <div class="post-card-tags">{{ range first 3 . }}<span class="tag">#{{ . }}</span>{{ end }}</div>
+        {{ end }}
+      </li>
+      {{ end }}
+    </ul>
+    {{ else }}
+    <p class="empty">No posts yet.</p>
     {{ end }}
-  </ul>
-  {{ else }}
-  <p class="empty">No posts yet.</p>
-  {{ end }}
-  <a class="more" href="{{ "/research/" | relURL }}">All research →</a>
-</section>
+  </section>
 
-<section class="home-section">
-  <h2>Featured CVEs</h2>
-  {{ $cves := sort .Site.Data.cves "date" "desc" }}
-  {{ if $cves }}
-  <ul class="cve-list">
-    {{ range first 3 $cves }}
-    <li>
-      <a href="{{ .cve_url }}" target="_blank" rel="noopener">{{ .id }}</a> — {{ .product }}
-      <span class="cvss">CVSS {{ .cvss }}</span>
-    </li>
+  <section class="home-section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">02 · Disclosures</p>
+        <h2>Featured CVEs</h2>
+      </div>
+      <a class="more" href="{{ "/cve/" | relURL }}">All disclosures {{ partial "icon.html" "arrow-right" }}</a>
+    </div>
+    {{ $sortedCves := sort $cves "date" "desc" }}
+    {{ if $sortedCves }}
+    <ul class="advisory-list">
+      {{ range first 3 $sortedCves }}
+      {{ $score := index (split .cvss " ") 0 }}
+      <li class="advisory-row">
+        <span class="advisory-bar"></span>
+        <div class="advisory-main">
+          <span class="advisory-id">{{ .id }}</span>
+          <span class="advisory-title"><a href="{{ .cve_url }}" target="_blank" rel="noopener">{{ .product }}</a></span>
+          <span class="advisory-meta">{{ .type }}</span>
+        </div>
+        <div class="advisory-side">
+          <span class="pill" title="{{ .cvss }}">CVSS {{ $score }}</span>
+          <span class="advisory-date">{{ .date }}</span>
+        </div>
+      </li>
+      {{ end }}
+    </ul>
+    {{ else }}
+    <p class="empty">No disclosures yet.</p>
     {{ end }}
-  </ul>
-  {{ else }}
-  <p class="empty">No disclosures yet.</p>
-  {{ end }}
-  <a class="more" href="{{ "/cve/" | relURL }}">All disclosures →</a>
-</section>
+  </section>
 
-<section class="home-section">
-  <h2>Bug Bounty Highlights</h2>
-  {{ $bounties := sort .Site.Data.bounties "date" "desc" }}
-  {{ if $bounties }}
-  <ul class="cve-list">
-    {{ range first 3 $bounties }}
-    <li>
-      <a href="{{ .report_url }}" target="_blank" rel="noopener">{{ .title }}</a> — {{ .platform }} / {{ .program }}
-      <span class="cvss">{{ .severity }}</span>
-    </li>
+  <section class="home-section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">03 · Bug Bounty</p>
+        <h2>Bug bounty highlights</h2>
+      </div>
+      <a class="more" href="{{ "/bounty/" | relURL }}">All reports {{ partial "icon.html" "arrow-right" }}</a>
+    </div>
+    {{ $sortedBounties := sort $bounties "date" "desc" }}
+    {{ if $sortedBounties }}
+    <ul class="advisory-list">
+      {{ range first 3 $sortedBounties }}
+      <li class="advisory-row tier-{{ .severity | lower }}">
+        <span class="advisory-bar"></span>
+        <div class="advisory-main">
+          <span class="advisory-title"><a href="{{ .report_url }}" target="_blank" rel="noopener">{{ .title }}</a></span>
+          <span class="advisory-meta">{{ .platform }} · {{ .program }}</span>
+        </div>
+        <div class="advisory-side">
+          <span class="sev sev-{{ .severity | lower }}">{{ .severity }}</span>
+          <span class="advisory-date">{{ .date }}</span>
+        </div>
+      </li>
+      {{ end }}
+    </ul>
+    {{ else }}
+    <p class="empty">No public reports yet.</p>
     {{ end }}
-  </ul>
-  {{ else }}
-  <p class="empty">No public reports yet.</p>
-  {{ end }}
-  <a class="more" href="{{ "/bounty/" | relURL }}">All reports →</a>
-</section>
+  </section>
+</div>
 {{ end }}

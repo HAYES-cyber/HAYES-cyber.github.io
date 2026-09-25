@@ -1,0 +1,34 @@
+{{- $name := . -}}
+{{- if eq $name "github" -}}
+<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+{{- else if eq $name "sun" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.6v2M10 16.4v2M18.4 10h-2M3.6 10h-2M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4M15.7 15.7l-1.4-1.4M5.7 5.7L4.3 4.3"/></svg>
+{{- else if eq $name "moon" -}}
+<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M16.9 12.6A7.6 7.6 0 018 3.1a.6.6 0 00-.8-.7 8.3 8.3 0 1010.4 10.4.6.6 0 00-.7-.2z"/></svg>
+{{- else if eq $name "menu" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg>
+{{- else if eq $name "close" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
+{{- else if eq $name "arrow-right" -}}
+<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+{{- else if eq $name "external" -}}
+<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5H3.8A1.3 1.3 0 002.5 4.8v7.4a1.3 1.3 0 001.3 1.3h7.4a1.3 1.3 0 001.3-1.3V9.5M9.5 2.5h4v4M13.2 2.8L7.5 8.5"/></svg>
+{{- else if eq $name "mail" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="15" height="11" rx="1.8"/><path d="M3.5 5.5l6.5 5 6.5-5"/></svg>
+{{- else if eq $name "key" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="13" r="3.3"/><path d="M9.3 10.7L15 5l2 2M13.2 6.8l1.8 1.8"/></svg>
+{{- else if eq $name "shield" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5l6 2.2v4.6c0 4-2.6 6.8-6 8.2-3.4-1.4-6-4.2-6-8.2V4.7l6-2.2z"/><path d="M7.3 10l1.9 1.9 3.5-3.9"/></svg>
+{{- else if eq $name "rss" -}}
+<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="12.5" r="1.6"/><path d="M2 6.6a7.4 7.4 0 017.4 7.4h1.9A9.3 9.3 0 002 4.7v1.9z"/><path d="M2 2.2a11.8 11.8 0 0111.8 11.8h1.9A13.7 13.7 0 002 0.3v1.9z"/></svg>
+{{- else if eq $name "location" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 18s6-5.1 6-9.8A6 6 0 004 8.2C4 12.9 10 18 10 18z"/><circle cx="10" cy="8.2" r="2.1"/></svg>
+{{- else if eq $name "briefcase" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="15" height="10" rx="1.6"/><path d="M6.5 6V4.8A1.8 1.8 0 018.3 3h3.4a1.8 1.8 0 011.8 1.8V6M2.5 10.5h15"/></svg>
+{{- else if eq $name "flag" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17V3M5 3.8s1-.8 2.6-.8 2.6 1.2 4.4 1.2 2.6-.8 2.6-.8v6.6s-1 .8-2.6.8-2.6-1.2-4.4-1.2-2.6.8-2.6.8"/></svg>
+{{- else if eq $name "bug" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="7" width="7" height="8.5" rx="3.5"/><path d="M10 7V5M7.5 5.5L6 4M12.5 5.5L14 4M4 9h2.5M13.5 9H16M4.3 13.5l2.2-1M15.7 13.5l-2.2-1M7 15.8L5.5 17.5M13 15.8l1.5 1.7"/></svg>
+{{- else if eq $name "terminal" -}}
+<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="1.8"/><path d="M5.5 8l2.6 2.4-2.6 2.4M10.5 13h4"/></svg>
+{{- end -}}

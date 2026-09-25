@@ -1,0 +1,28 @@
+{{ define "main" }}
+<div class="wrap-wide">
+  <div class="page-header">
+    <p class="eyebrow">Profile</p>
+    <h1>{{ .Title }}</h1>
+  </div>
+  <div class="about-layout">
+    <div class="post-content">
+      {{ .Content }}
+    </div>
+    <aside class="profile-card">
+      <div class="profile-avatar">{{ substr .Site.Params.author 0 1 }}</div>
+      <h3>{{ .Site.Params.author }}</h3>
+      <p class="profile-role">{{ .Site.Params.tagline }}</p>
+      <ul class="profile-links">
+        {{ with .Site.Params.github }}
+        <li>{{ partial "icon.html" "github" }} <a href="{{ . }}" target="_blank" rel="noopener">{{ $.Site.Params.handle }}</a></li>
+        {{ end }}
+        {{ with .Site.Params.email }}
+        <li>{{ partial "icon.html" "mail" }} <a href="mailto:{{ . }}">{{ . }}</a></li>
+        {{ end }}
+        <li>{{ partial "icon.html" "flag" }} <a href="{{ "/cve/" | relURL }}">CVE disclosures</a></li>
+        <li>{{ partial "icon.html" "bug" }} <a href="{{ "/bounty/" | relURL }}">Bug bounty reports</a></li>
+      </ul>
+    </aside>
+  </div>
+</div>
+{{ end }}
