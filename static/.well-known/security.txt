@@ -1,0 +1,6 @@
+Contact: mailto:you@example.com
+# Optional: publish your PGP key and reference it here.
+# Encryption: https://USERNAME.github.io/pgp-key.txt
+Preferred-Languages: en
+Canonical: https://USERNAME.github.io/.well-known/security.txt
+Expires: 2027-01-01T00:00:00.000Z

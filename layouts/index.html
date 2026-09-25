@@ -1,0 +1,64 @@
+{{ define "main" }}
+<section class="hero">
+  <h1>{{ .Site.Params.author }}</h1>
+  <p class="tagline">{{ .Site.Params.tagline }}</p>
+</section>
+
+{{ if .Content }}<div class="home-intro">{{ .Content }}</div>{{ end }}
+
+<section class="home-section">
+  <h2>Latest Research</h2>
+  {{ $posts := where .Site.RegularPages "Section" "research" }}
+  {{ $posts = $posts.ByDate.Reverse }}
+  {{ if $posts }}
+  <ul class="post-list">
+    {{ range first 3 $posts }}
+    <li>
+      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
+      {{ if .Params.summary }}<p>{{ .Params.summary }}</p>{{ end }}
+    </li>
+    {{ end }}
+  </ul>
+  {{ else }}
+  <p class="empty">No posts yet.</p>
+  {{ end }}
+  <a class="more" href="{{ "/research/" | relURL }}">All research →</a>
+</section>
+
+<section class="home-section">
+  <h2>Featured CVEs</h2>
+  {{ $cves := sort .Site.Data.cves "date" "desc" }}
+  {{ if $cves }}
+  <ul class="cve-list">
+    {{ range first 3 $cves }}
+    <li>
+      <a href="{{ .cve_url }}" target="_blank" rel="noopener">{{ .id }}</a> — {{ .product }}
+      <span class="cvss">CVSS {{ .cvss }}</span>
+    </li>
+    {{ end }}
+  </ul>
+  {{ else }}
+  <p class="empty">No disclosures yet.</p>
+  {{ end }}
+  <a class="more" href="{{ "/cve/" | relURL }}">All disclosures →</a>
+</section>
+
+<section class="home-section">
+  <h2>Bug Bounty Highlights</h2>
+  {{ $bounties := sort .Site.Data.bounties "date" "desc" }}
+  {{ if $bounties }}
+  <ul class="cve-list">
+    {{ range first 3 $bounties }}
+    <li>
+      <a href="{{ .report_url }}" target="_blank" rel="noopener">{{ .title }}</a> — {{ .platform }} / {{ .program }}
+      <span class="cvss">{{ .severity }}</span>
+    </li>
+    {{ end }}
+  </ul>
+  {{ else }}
+  <p class="empty">No public reports yet.</p>
+  {{ end }}
+  <a class="more" href="{{ "/bounty/" | relURL }}">All reports →</a>
+</section>
+{{ end }}

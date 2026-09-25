@@ -1,0 +1,14 @@
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="{{ "/" | relLangURL }}">{{ .Site.Params.author }}</a>
+    <nav aria-label="Main navigation">
+      <button id="nav-toggle" class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+      <ul id="nav-menu">
+        {{ range .Site.Menus.main }}
+        <li><a href="{{ .URL | relLangURL }}"{{ if $.IsMenuCurrent "main" . }} class="active" aria-current="page"{{ end }}>{{ .Name }}</a></li>
+        {{ end }}
+      </ul>
+    </nav>
+    <button id="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme">🌓</button>
+  </div>
+</header>

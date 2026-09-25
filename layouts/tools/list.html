@@ -1,0 +1,18 @@
+{{ define "main" }}
+<h1>{{ .Title }}</h1>
+{{ .Content }}
+{{ $tools := .Site.Data.tools }}
+{{ if $tools }}
+<ul class="tool-list">
+  {{ range $tools }}
+  <li>
+    <a href="{{ .repo_url }}" target="_blank" rel="noopener">{{ .name }}</a>
+    {{ with .language }}<span class="lang">{{ . }}</span>{{ end }}
+    <p>{{ .description }}</p>
+  </li>
+  {{ end }}
+</ul>
+{{ else }}
+<p class="empty">No tools published yet.</p>
+{{ end }}
+{{ end }}

@@ -1,0 +1,37 @@
+{{ define "main" }}
+<h1>{{ .Title }}</h1>
+{{ .Content }}
+{{ $cves := sort .Site.Data.cves "date" "desc" }}
+{{ if $cves }}
+<div class="table-wrap">
+<table class="cve-table">
+  <thead>
+    <tr>
+      <th>CVE</th>
+      <th>Product</th>
+      <th>Type</th>
+      <th>CVSS</th>
+      <th>Advisory</th>
+      <th>Date</th>
+      <th>Write-up</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ range $cves }}
+    <tr>
+      <td><a href="{{ .cve_url }}" target="_blank" rel="noopener">{{ .id }}</a></td>
+      <td>{{ .product }}</td>
+      <td>{{ .type }}</td>
+      <td>{{ .cvss }}</td>
+      <td><a href="{{ .advisory_url }}" target="_blank" rel="noopener">Advisory</a></td>
+      <td>{{ .date }}</td>
+      <td>{{ if .writeup_url }}<a href="{{ .writeup_url }}">Read</a>{{ else }}—{{ end }}</td>
+    </tr>
+    {{ end }}
+  </tbody>
+</table>
+</div>
+{{ else }}
+<p class="empty">No disclosures published yet.</p>
+{{ end }}
+{{ end }}

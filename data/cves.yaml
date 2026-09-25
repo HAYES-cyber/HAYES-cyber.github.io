@@ -1,0 +1,26 @@
+# One entry per disclosed CVE. Keep entries factual and link every claim to a
+# primary source (official CVE record + vendor advisory). Do not publish an
+# entry until the vendor's coordinated disclosure embargo has lifted.
+#
+# The entry below is a placeholder to show the expected shape and to let the
+# site build successfully out of the box. Delete it (or replace CVE-0000-00000
+# with a real, verifiable record) before publishing.
+#
+# Fields:
+#   id            CVE-YYYY-NNNNN
+#   product       Affected product / version
+#   type          Vulnerability class (e.g. "Authentication Bypass", "SSRF")
+#   cvss          CVSS vector or score string
+#   cve_url       Link to the official record on cve.org
+#   advisory_url  Link to the vendor's security advisory (should credit you)
+#   writeup_url   Link to your technical write-up under /research/, if any
+#   date          Public disclosure date, YYYY-MM-DD
+
+- id: "CVE-0000-00000"
+  product: "Example Corp Widget Server 2.x"
+  type: "Authentication Bypass"
+  cvss: "8.1 (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N)"
+  cve_url: "https://www.cve.org/CVERecord?id=CVE-0000-00000"
+  advisory_url: "https://example.com/security/advisories/EXAMPLE-2024-01"
+  writeup_url: "/research/example-writeup/"
+  date: "2024-01-01"

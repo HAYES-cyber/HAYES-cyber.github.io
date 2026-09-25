@@ -1,0 +1,25 @@
+# One entry per publicly disclosed bug bounty / vulnerability disclosure report
+# you can share. Only add entries backed by a public, verifiable report link
+# (a disclosed HackerOne/YesWeHack report, an Immunefi payout confirmation, or
+# a program's hall-of-fame page crediting you).
+#
+# The entry below is a placeholder to show the expected shape and let the site
+# build out of the box. Delete it or replace it with a real, verifiable report
+# before publishing.
+#
+# Fields:
+#   platform     HackerOne | YesWeHack | Immunefi | other
+#   program      Target program/product name
+#   title        Report title
+#   severity     Critical | High | Medium | Low (as rated by the platform/program)
+#   bounty       Payout amount, if disclosed (e.g. "$2,500") — omit if undisclosed
+#   report_url   Link to the public/disclosed report
+#   date         Disclosure date, YYYY-MM-DD
+
+- platform: "HackerOne"
+  program: "Example Program"
+  title: "Example: replace with a real disclosed report"
+  severity: "High"
+  bounty: ""
+  report_url: "https://hackerone.com/reports/0000000"
+  date: "2024-01-01"

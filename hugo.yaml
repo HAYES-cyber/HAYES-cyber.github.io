@@ -1,0 +1,69 @@
+baseURL: "https://HAYES-cyber.github.io/"
+languageCode: "en-us"
+title: "Bryce Alan Hayes — Security Research"
+paginate: 8
+
+enableRobotsTXT: true
+enableEmoji: false
+
+markup:
+  highlight:
+    style: "monokai"
+    lineNos: true
+    codeFences: true
+    guessSyntax: true
+    noClasses: true
+  goldmark:
+    renderer:
+      unsafe: true
+  tableOfContents:
+    startLevel: 2
+    endLevel: 4
+    ordered: false
+
+taxonomies:
+  tag: tags
+
+outputs:
+  home: ["HTML", "RSS"]
+  section: ["HTML", "RSS"]
+
+menu:
+  main:
+    - name: "Home"
+      url: "/"
+      weight: 1
+    - name: "About"
+      url: "/about/"
+      weight: 2
+    - name: "CVE"
+      url: "/cve/"
+      weight: 3
+    - name: "Bounty"
+      url: "/bounty/"
+      weight: 4
+    - name: "Tools"
+      url: "/tools/"
+      weight: 5
+    - name: "Research"
+      url: "/research/"
+      weight: 6
+    - name: "Talks"
+      url: "/talks/"
+      weight: 7
+    - name: "Contact"
+      url: "/contact/"
+      weight: 8
+
+params:
+  author: "Bryce Alan Hayes"
+  handle: "HAYES-cyber"
+  tagline: "Security researcher focused on [research area, e.g. web application security & IoT firmware]."
+  email: "you@example.com"
+  pgpFingerprint: "XXXX XXXX XXXX XXXX XXXX  XXXX XXXX XXXX XXXX XXXX"
+  github: "https://github.com/HAYES-cyber"
+  linkedin: ""
+  hackerone: ""
+  yeswehack: ""
+  immunefi: ""
+  bugcrowd: ""

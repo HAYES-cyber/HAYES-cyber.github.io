@@ -1,0 +1,13 @@
+# Open-source security tools/scripts you actually maintain. Only list real
+# repositories — link the real GitHub URL, not a placeholder.
+#
+# Fields:
+#   name          Tool name
+#   description   One-sentence description
+#   repo_url      GitHub repo URL
+#   language      Primary language (optional)
+
+- name: "example-tool"
+  description: "Replace with a real tool you maintain, or delete this entry."
+  repo_url: "https://github.com/HAYES-cyber/example-tool"
+  language: "Python"
