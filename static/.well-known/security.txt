@@ -1,4 +1,4 @@
-Contact: mailto:you@example.com
+Contact: mailto:1092bunk@gmail.com
 # Optional: publish your PGP key and reference it here.
 # Encryption: https://brycealanhayes.com/pgp-key.txt
 Preferred-Languages: en

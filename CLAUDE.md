@@ -1,6 +1,8 @@
 # Security research blog — project context
 
-Personal security-research portfolio for **Bryce Alan Hayes** (GitHub: [HAYES-cyber](https://github.com/HAYES-cyber)), built to support an application to a certification/network program that reviews CVE records, bug bounty history, open-source tools, and education as evidence of active research.
+Personal security-research portfolio for **Bryce Alan Hayes** (GitHub: [HAYES-cyber](https://github.com/HAYES-cyber)). Its purpose is to prove, with independently verifiable evidence, that this person is an active cybersecurity researcher — built specifically to support an application to Anthropic's Cyber Verification Program (CVP), which reviews CVE records, bug bounty history, open-source tools, and education.
+
+Because a CVP reviewer will check every claim against its primary source, the content rule below is not a style preference — it is the entire point of the site. An unverifiable or inflated claim here doesn't just look bad, it is the specific failure mode this program screens for.
 
 - Hugo static site, custom layouts under `layouts/`, no external theme.
 - Deployed via `.github/workflows/hugo.yml` to GitHub Pages at repo `HAYES-cyber/HAYES-cyber.github.io` → served at https://brycealanhayes.com/ (custom domain, DNS + `static/CNAME` point at GitHub Pages), branch `main`.

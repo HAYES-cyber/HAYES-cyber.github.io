@@ -1,109 +1,109 @@
 ---
-title: "Spring 权限绕过的那些事儿"
+title: "The Trouble with Spring Authorization Bypasses"
 date: 2026-08-01
 tags: ["java", "spring", "source-code-analysis", "auth-bypass"]
-summary: "从 DispatcherServlet 的路由匹配源码出发，讲清楚为什么在 Spring 框架下用 getRequestURI/getRequestURL 做鉴权、或用黑名单校验路径，容易被绕过。"
+summary: "Starting from the routing-matching source in DispatcherServlet, this explains why authorizing on getRequestURI/getRequestURL — or blacklist-validating paths — in Spring is easy to bypass."
 toc: true
 draft: false
 ---
 
-## Spring 与 Spring Boot 简介
+## A Quick Primer on Spring and Spring Boot
 
-![Spring 框架发展时间线](/img/research/spring-auth-bypass/image1.png)
+![Spring framework release timeline](/img/research/spring-auth-bypass/image1.png)
 
-Spring 框架在 2003 年正式推出，是一个轻量级的 Java 开发框架，解决了业务逻辑层和其他各层的松耦合问题，并将面向接口的编程思想贯穿整个系统应用。
+The Spring framework was officially released in 2003. It's a lightweight Java development framework that solves loose-coupling problems between the business logic layer and other layers, and carries interface-oriented programming philosophy through the entire application stack.
 
-Spring 框架的两大核心分别为 IOC（Inverse of Control，控制反转）和 AOP（Aspect Oriented Programming，面向切面编程）。经过长达 20 年的发展，Spring 框架已经进入 6.0 时代，目前国内在使用的版本主要还是 4.0 和 5.0。
+Spring's two core pillars are IoC (Inversion of Control) and AOP (Aspect Oriented Programming). After 20+ years of development, Spring is now in its 6.0 era, though the versions still most commonly deployed domestically are 4.0 and 5.0.
 
-Spring Boot 是 Spring 的组件集合，预组装了 Spring 的一系列组件，通过它可以在极短的时间内搭建一套基于 Spring 框架的 Web 系统。两者的版本对应关系如下：
+Spring Boot is a curated bundle of Spring components — pre-assembled so you can stand up a Spring-based web system in very little time. The version mapping between the two is:
 
-| Spring Boot 版本 | Spring 版本 |
+| Spring Boot version | Spring version |
 |---|---|
 | 3.x | 6.x |
 | 2.x | 5.x |
 | 1.x | 4.x |
 
-本文分析的源码基于 Spring Boot 2.2.0.RELEASE（对应 Spring Framework 5.2.0.RELEASE），Web 容器为默认的 Tomcat。
+The source analyzed in this post is based on Spring Boot 2.2.0.RELEASE (corresponding to Spring Framework 5.2.0.RELEASE), with Tomcat as the default web container.
 
-## 核心源码分析：路由匹配全流程
+## Source-Code Deep Dive: The Full Route-Matching Flow
 
-`org.springframework.web.servlet.DispatcherServlet` 是 Spring 框架分发路由的核心入口。
+`org.springframework.web.servlet.DispatcherServlet` is the core entry point Spring uses to dispatch routes.
 
-![DispatcherServlet 分发入口](/img/research/spring-auth-bypass/image4.png)
+![DispatcherServlet dispatch entry point](/img/research/spring-auth-bypass/image4.png)
 
-查看 `this.handlerMappings`，存在 8 个不同的 `HandlerMapping` 实现类：
+Inspecting `this.handlerMappings` turns up 8 different `HandlerMapping` implementations:
 
-![调试器中查看 handlerMappings，共 8 个实现类](/img/research/spring-auth-bypass/image5.png)
+![Viewing handlerMappings in the debugger — 8 implementations in total](/img/research/spring-auth-bypass/image5.png)
 
-| 类名 | 作用 |
+| Class | Purpose |
 |---|---|
-| `springfox.documentation.spring.web.PropertySourcedRequestMappingHandlerMapping` | 基于配置的 URL 处理器，例如 Swagger |
-| `org.springframework.boot.actuate.endpoint.web.servlet.WebMvcEndpointHandlerMapping` | Actuator 监控框架使用 |
-| `org.springframework.boot.actuate.endpoint.web.servlet.ControllerEndpointHandlerMapping` | Actuator 监控框架使用 |
-| `org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping` | 用户通过 `@RequestMapping` 注解实现的接口 |
-| `org.springframework.boot.autoconfigure.web.servlet.WelcomePageHandlerMapping` | 默认欢迎页面处理器 |
-| `org.springframework.web.servlet.handler.BeanNameUrlHandlerMapping` | 通过 bean 名称的 URL 处理器 |
-| `org.springframework.web.servlet.function.support.RouterFunctionMapping` | 基于函数的 URL 处理器 |
-| `org.springframework.web.servlet.handler.SimpleUrlHandlerMapping` | 基于路径表达式的 URL 处理器 |
+| `springfox.documentation.spring.web.PropertySourcedRequestMappingHandlerMapping` | Configuration-driven URL handler, e.g. Swagger |
+| `org.springframework.boot.actuate.endpoint.web.servlet.WebMvcEndpointHandlerMapping` | Used by the Actuator monitoring framework |
+| `org.springframework.boot.actuate.endpoint.web.servlet.ControllerEndpointHandlerMapping` | Used by the Actuator monitoring framework |
+| `org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping` | Endpoints implemented via the `@RequestMapping` annotation |
+| `org.springframework.boot.autoconfigure.web.servlet.WelcomePageHandlerMapping` | Default welcome-page handler |
+| `org.springframework.web.servlet.handler.BeanNameUrlHandlerMapping` | URL handler keyed off bean names |
+| `org.springframework.web.servlet.function.support.RouterFunctionMapping` | Function-based URL handler |
+| `org.springframework.web.servlet.handler.SimpleUrlHandlerMapping` | Path-expression-based URL handler |
 
 ### getHandlerInternal → lookupPath
 
-当 mapping 为 `RequestMappingHandlerMapping` 时，进入 `mapping.getHandler` 方法，再进入 `getHandlerInternal`，最终进入 `getLookUpPathForRequest`。
+When the mapping is a `RequestMappingHandlerMapping`, execution enters `mapping.getHandler`, then `getHandlerInternal`, and eventually `getLookUpPathForRequest`.
 
-`alwaysUseFullPath` 开启后 Spring 将使用全路径查找；该配置在 Spring Boot 版本 ≤ 2.3.0.RELEASE 时默认为 `false`，此时会继续进入 `getPathWithinApplication` → `getRequestUri`。
+When `alwaysUseFullPath` is enabled, Spring looks up the full path. That setting defaults to `false` on Spring Boot ≤ 2.3.0.RELEASE, in which case execution continues on into `getPathWithinApplication` → `getRequestUri`.
 
-### URL 清理链：decodeAndCleanUriString
+### The URL Sanitization Chain: decodeAndCleanUriString
 
-`decodeAndCleanUriString` 的处理链条依次是：
+`decodeAndCleanUriString` runs the following processing chain, in order:
 
-1. **`removeSemicolonContent`** — 清除 URL 中 `;` 及其后续部分，即 `/admin;xxx` 处理后变为 `/admin`。
-2. **`decodeRequestString`** — 对 URL 做 URL 解码，即 `/%61%64%6d%69%6e` 处理后变为 `/admin`。
-3. **`getSanitizedPath`** — 删除多余的 `/`，例如 `///admin` 处理后变为 `/admin`。
-4. 剔除应用程序的上下文路径。
+1. **`removeSemicolonContent`** — strips `;` and everything after it from the URL, so `/admin;xxx` becomes `/admin`.
+2. **`decodeRequestString`** — URL-decodes the path, so `/%61%64%6d%69%6e` becomes `/admin`.
+3. **`getSanitizedPath`** — collapses redundant `/` characters, so `///admin` becomes `/admin`.
+4. Strips the application's context path.
 
-再看 `getPathWithinServletMapping` 剩下的逻辑：它最终会调用 Web 容器自己的 `getServletPath` 方法，该方法在不同容器下返回值有差异。以 Tomcat 为例，输入 `/api/..;/test` 时，该方法会返回 URL 规范化后的结果，即 `/test`；此时 `getPathWithinServletMapping` 通常返回空字符串，最终 URL 以 `getPathWithinApplication` 的结果为准。
+Now look at what's left of `getPathWithinServletMapping`: it ultimately calls the web container's own `getServletPath` method, whose return value differs across containers. On Tomcat, for example, given the input `/api/..;/test`, this method returns the normalized URL — `/test`. In that case `getPathWithinServletMapping` typically returns an empty string, and the final URL is whatever `getPathWithinApplication` produced.
 
-### lookupHandlerMethod：“智能”的最佳匹配
+### lookupHandlerMethod: "Smart" Best-Match
 
-分析完 `lookupPath` 的查找过程，回到 `AbstractHandlerMethodMapping.getHandlerInternal`：拿到 `lookupPath` 后会进入 `lookupHandlerMethod`，通过 Spring 格式化后的请求路径查找对应的处理方法。除 `PropertySourcedRequestMappingHandlerMapping` 外，其余 `HandlerMapping` 都执行默认的 `lookupHandlerMethod` 逻辑。
+Having walked through how `lookupPath` is resolved, back in `AbstractHandlerMethodMapping.getHandlerInternal`: once `lookupPath` is obtained, execution enters `lookupHandlerMethod`, which looks up the matching handler method using Spring's formatted request path. Every `HandlerMapping` except `PropertySourcedRequestMappingHandlerMapping` runs this default `lookupHandlerMethod` logic.
 
-这个方法的核心是**最佳匹配**：即使用户访问的 URL 与 `@RequestMapping` 中定义的并不完全相同，Spring 也能"智能"推测出最终的处理器。典型场景是：请求 URL 为 `/admin/` 时，通过最近匹配，同样能命中路由定义为 `/admin` 的接口。
+The core of this method is **best-match**: even when the URL a user requests doesn't exactly match what's defined in `@RequestMapping`, Spring can still "intelligently" infer the intended handler. A classic case: requesting `/admin/` will, via closest-match resolution, still hit a route defined as `/admin`.
 
-## 漏洞利用与修复
+## Exploitation and Remediation
 
-### 场景一：用 getRequestURI / getRequestURL 鉴权
+### Scenario 1: Authorizing on getRequestURI / getRequestURL
 
-在 Tomcat 容器下，通过 `getRequestURI` / `getRequestURL` 拿到的 URL 是请求的**原始** URL，未经过任何处理和转换。而前面的源码分析已经说明，Spring 框架会自动清除 URL 中的特殊字符并做 URL 解码。因此如果鉴权逻辑用的是 `getRequestURI` / `getRequestURL`，而路由匹配用的是 Spring 处理后的路径，两者对同一个 URL 的“理解”就可能不一致，从而产生权限绕过。
+On Tomcat, the URL obtained via `getRequestURI` / `getRequestURL` is the **raw** request URL — untouched by any processing or transformation. But as the source analysis above showed, Spring automatically strips special characters from URLs and URL-decodes them. So if the authorization logic reads from `getRequestURI` / `getRequestURL` while route matching reads from Spring's processed path, the two can end up with different "interpretations" of the same URL — and that mismatch is exactly what produces an authorization bypass.
 
-常见绕过方式：
+Common bypass techniques:
 
-- **添加无用字符**：在路径中插入 `;`、`/` 等。
-- **URL 编码**：对路径做百分号编码。
-- **目录穿越**（Spring Boot ≤ 2.3.0.RELEASE）：利用 `..;/` 之类的序列。
+- **Inserting junk characters**: adding `;`, `/`, etc. into the path.
+- **URL encoding**: percent-encoding the path.
+- **Directory traversal** (Spring Boot ≤ 2.3.0.RELEASE): using sequences like `..;/`.
 
-在本地测试环境中，`getRequestURI` 鉴权 + 分号绕过的实际效果如下——正常访问 `/admin` 会被拦截，插入分号后同样能拿到 `you are admin`：
+In a local test environment, here's `getRequestURI`-based authorization plus a semicolon bypass in practice — a plain request to `/admin` gets blocked, but inserting a semicolon still returns `you are admin`:
 
-![GET /;/admin 绕过鉴权，响应返回 you are admin](/img/research/spring-auth-bypass/image26.png)
+![GET /;/admin bypasses authorization, response returns you are admin](/img/research/spring-auth-bypass/image26.png)
 
-URL 编码同理，`/%61%64%6d%69%6e` 解码后就是 `/admin`，一样能绕过：
+URL encoding works the same way — `/%61%64%6d%69%6e` decodes to `/admin`, and bypasses just as easily:
 
-![GET /%61%64%6d%69%6e 编码绕过，响应同样返回 you are admin](/img/research/spring-auth-bypass/image28.png)
+![GET /%61%64%6d%69%6e encoded bypass, response also returns you are admin](/img/research/spring-auth-bypass/image28.png)
 
-例如访问 `/;//api/../admin` 时，`getRequestURI` 与 `getServletPath` 拿到的结果并不相同——前者是未处理的原始串，后者是 Tomcat 规范化后的结果。
+For example, requesting `/;//api/../admin` produces different results from `getRequestURI` and `getServletPath` — the former is the untouched raw string, the latter is Tomcat's normalized result.
 
-**修复建议**：优先使用 `getServletPath` 获取请求路径，该方法拿到的 URL 已经过 Tomcat 规范化处理，和 Spring 框架对路径的清理与转换逻辑更接近，能避免因两边处理不一致导致的权限绕过。
+**Remediation**: prefer `getServletPath` for obtaining the request path. Its return value has already been normalized by Tomcat, which tracks much more closely with how Spring cleans and transforms paths — avoiding the authorization bypass that results from the two sides disagreeing.
 
-### 场景二：不严格的 URL 黑名单校验
+### Scenario 2: Loose URL Blacklist Validation
 
-由于 Spring 框架存在“最佳路由匹配”算法，访问 `/admin/` 时也能匹配到路由定义为 `/admin` 的接口。常见绕过方式：
+Because Spring's "best route match" algorithm exists, a request to `/admin/` can also match a route defined as `/admin`. Common bypass techniques:
 
-- 在路径尾部增加特殊字符，如 `/`。
-- 在路径尾部增加 `.xxx` 后缀（Spring Boot ≤ 1.5.22.RELEASE 且 `useSuffixPatternMatch` 默认为 `true` 时有效）。
+- Appending special characters to the end of the path, such as `/`.
+- Appending a `.xxx` suffix to the end of the path (effective when Spring Boot ≤ 1.5.22.RELEASE and `useSuffixPatternMatch` defaults to `true`).
 
-**修复建议**：从安全角度出发，任何时候都不建议优先用黑名单做访问策略控制；如果确实需要黑名单兜底，建议校验逻辑更严格，比如把简单的 `equals` 判断换成 `contains`。
+**Remediation**: from a security standpoint, blacklists are never the preferred mechanism for access control. If a blacklist fallback is genuinely necessary, make the validation logic stricter — for instance, swap a naive `equals` check for a `contains` check.
 
-## 总结
+## Summary
 
-Spring 是一款主流、优秀的 Java 开发框架，功能非常强大。开发者使用不当时可能引入较多安全问题，但严格来说这并不属于框架本身的漏洞，而是由于开发者逻辑不够严谨，导致 Spring 框架与 Web 容器之间对同一 URL 的解析结果不一致，进而产生的逻辑漏洞。
+Spring is a mainstream, excellent Java framework with substantial capability. Improper use by developers can introduce plenty of security issues — but strictly speaking, this isn't a vulnerability in the framework itself. It's a logic flaw that arises because developer logic isn't rigorous enough, letting Spring and the web container disagree on how the same URL should be parsed.
 
-从安全的角度，建议任何时候都不要优先通过黑名单的形式做访问策略控制。
+From a security standpoint: never make a blacklist your primary mechanism for access-control policy.

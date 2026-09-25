@@ -1,393 +1,388 @@
 ---
-title: "AI 编程智能体工作台：搭建与实战"
+title: "AI Coding Agent Workbench: Setup and Field Practice"
 date: 2026-09-20
 tags: ["ai-security", "agent", "web", "mobile-security", "methodology"]
-summary: "把 Claude Code 这类编程智能体套上规则、记忆、能力、台账四层工程设施，变成一条能对授权目标持续产出可定级报告的流水线：从冷启动到 Web / 小程序 / APP 三种目标形态的实战方法论。"
+summary: "Wrapping coding agents like Claude Code in four engineering layers — rules, memory, capabilities, and a ledger — turns them into a pipeline that keeps producing gradeable reports against authorized targets: a field methodology spanning cold start through Web / mini-program / APP target types."
 toc: true
 draft: false
 ---
 
-> 方法论主线来自 Devansh 的 *Needle in the Haystack*，工具细节来自公开文档，实战数据来自我们自己的授权测试台账。数据截至 2026-09-20，适用范围：已书面授权的安全测试。
+> The methodology backbone comes from Devansh's *Needle in the Haystack*; tool details come from public documentation; the field data comes from our own authorized-testing ledger. Data as of 2026-09-20. Scope: written-authorized security testing only.
 
-怎么从一台空机器把这套东西搭起来，搭的过程会撞上什么，Web、小程序和 APP 分别怎么下手，以及最后那一步——话该怎么跟模型说。
+How to stand this whole thing up from a bare machine, what you'll run into along the way, how to approach Web, mini-programs, and APPs differently, and finally — how to actually talk to the model.
 
-## 给管理层的三句话
+## Three Sentences for Management
 
 **1.**
-一次性投入约五个人日。之后每接一个新目标都吃这份红利，冷启动从天级掉到小时级。
+A one-time investment of about five person-days. Every new target after that cashes in on the dividend — cold start drops from days to hours.
 
 **2.** AI
-接管的是通读、枚举、重放、起草这些体力活。什么算漏洞、影响多大、什么时候必须停，仍然是人签字，而且流程强制要求人签字。
+takes over the grunt work: reading through code, enumerating, replaying, drafting. What counts as a vulnerability, how bad it is, and when to stop — that's still a human sign-off, and the process requires it.
 
 **3.**
-合规写在配置里而不是靠自觉。授权白名单、写操作禁令、速率上限、数据打码，全程留日志，比纯人工测试更可审计。
+Compliance lives in the config, not in good intentions. Authorization allowlists, write-operation bans, rate caps, data redaction, full logging throughout — more auditable than pure manual testing.
 
-| **前提声明**　本文所有内容仅适用于已获书面授权、范围明确、全程可审计的安全测试。未获授权的目标，这里没有一条方法是适用的。文中工具和手法全部来自公开资料，本文的价值在于把它们编排成一条可复用的流程，而不是提供任何具体目标的攻击方案。文中提及的实战数据均来自已授权并已向厂商报告的项目。 |
+| **Prerequisite statement**　Everything in this post applies only to security testing that has written authorization, a clearly defined scope, and is fully auditable. None of these methods apply to unauthorized targets. Every tool and technique here comes from public sources — the value of this post is in assembling them into a reusable pipeline, not in providing an attack plan for any specific target. Any field data mentioned here comes from projects that were authorized and already reported to the vendor. |
 |----|
 
-## 00 · 摘要：一页看懂
+## 00 · Summary: The One-Page Version
 
 
 ------------------------------------------------------------------------
 
-把 Claude Code
-这类编程智能体套上四层工程设施——规则、记忆、能力、台账——变成一条能对授权目标持续产出可定级报告的流水线。它不是一句更好的提示词，是一套目录结构加一组约定。
+Wrapping Claude Code
+and agents like it in four engineering layers — rules, memory, capabilities, ledger — turns them into a pipeline that keeps producing gradeable reports against authorized targets. It's not a better prompt; it's a directory structure plus a set of conventions.
 
-#### 四个数
+#### Four numbers
 
-| **5 人日** | **¥50 – 300** | **天 → 时** | **约 50%** |
+| **5 person-days** | **¥50 – 300** | **Days → hours** | **~50%** |
 |----|----|----|----|
-| 从零搭到跑通第一个闭环 | 单业务线深挖一轮的 API 成本 | 新目标冷启动周期 | 第二轮起的成本降幅 |
+| Building from zero to a working first loop | API cost for one deep pass on a single business line | Cold-start period for a new target | Cost drop starting from the second round |
 
-#### 它解决什么
+#### What it solves
 
-把仓库丢进去说"找出所有漏洞"，拿回来的是一张看着专业、实际没法用的表。换更强的模型也没用——我们拿
-Opus 5 和 GLM-5.3
-各跑过同一个目标，产出质量差别不大，都不能用。问题出在方法不在模型。裸用有四个结构性缺陷，工作台的四层设施是一一对应补上去的：
+Dump a repo in and say "find all the vulnerabilities," and what comes back looks professional but isn't actually usable. A stronger model doesn't help either — we ran the same target through
+Opus 5 and GLM-5.3,
+and the output quality barely differed; neither was usable. The problem is the method, not the model. Using it raw has four structural flaws, and the workbench's four layers are built to fix them one for one:
 
-| **裸用的毛病** | **对策** | **落地成什么** |
+| **Problem with raw usage** | **Countermeasure** | **What it becomes** |
 |----|----|----|
-| 没有威胁模型，模型不知道"影响"是什么，只能泛泛列 CWE | 规则层：薄切片 + 信任边界 | CLAUDE.md + 每目标一页 threat-model.md |
-| 宽提示词触发广度优先幻觉，覆盖面换来零深度 | 方法约定：不变量拆两步问 | 任务书模板（目标 / 步骤 / 判据 / 预算） |
-| 会话无状态，上轮否定的假设这轮重跑，双重烧钱 | 记忆层 + 台账层 | memory/ 三文件 + tested.md 假设矩阵 |
-| 没有边界意识，会顺手探旁站、误触写操作 | 规则层红线 + 三层 scope 护栏 | 浏览器白名单 + 代理 allow_hosts + 出站硬断 |
+| No threat model, so the model has no concept of "impact" — it can only list CWEs generically | Rules layer: thin slices + trust boundaries | CLAUDE.md + one threat-model.md page per target |
+| Broad prompts trigger breadth-first hallucination — coverage bought at the cost of zero depth | Method convention: break invariants into a two-step question | Task-brief template (goal / steps / criteria / budget) |
+| Sessions are stateless — assumptions disproven last round get retested this round, burning money twice | Memory layer + ledger layer | memory/ three files + tested.md hypothesis matrix |
+| No sense of boundaries — it'll poke at adjacent hosts or trigger a write operation without meaning to | Rules-layer hard limits + three-tier scope guardrails | Browser allowlist + proxy allow_hosts + hard outbound cutoff |
 
-#### 搭完长什么样
+#### What it looks like once it's built
 
-一个可复制的目录骨架、一页纸规则文件、一组按目标形态装的工具，外加一本记录每个假设及其结果的台账。三种形态共用同一套骨架，只在能力层换工具：
+A directory skeleton you can copy, a one-page rules file, a set of tools fitted to the target's form factor, plus a ledger recording every hypothesis and its outcome. All three target types share the same skeleton — only the capability layer's tools change:
 
-| **形态** | **能力层装什么** | **复用的部分** |
+| **Form factor** | **What's in the capability layer** | **What's reused** |
 |----|----|----|
-| Web | DevTools MCP + 代理 + 前端白盒 | 规则层、记忆层、台账层、报告模板，三种形态完全相同 |
-| 客户端 | wxapkg / asar 解包 + UIA 自动化 | 同上 |
-| APP | jadx / Frida + 脱壳 + 解绑 | 同上 |
+| Web | DevTools MCP + proxy + frontend white-box | Rules layer, memory layer, ledger layer, report template — identical across all three form factors |
+| Client (mini-program) | wxapkg / asar unpacking + UIA automation | Same as above |
+| APP | jadx / Frida + unpacking + unbinding | Same as above |
 
-#### 一条贯穿全文的尺子
+#### A ruler that runs through the whole piece
 
-Devansh 在 Needle in the Haystack 里给了个很好用的分配比例：脚手架不超过
-10%，切片审计占 60 到 80，剩下 20 到 30 留给验证。
+Devansh's Needle in the Haystack gives a useful budget split: scaffolding no more than
+10%, slice audits 60 to 80%, and the remaining 20 to 30% for verification.
 
-| **预算段** | **占比** | **花在哪** |
+| **Budget segment** | **Share** | **Spent on** |
 |----|----|----|
-| 脚手架 | < 10% | 一页威胁模型、不变量清单、红线 |
-| 切片审计 | 60 – 80% | 指向一个信任边界的定向审计：白盒读码、黑盒验证、子 agent 分片 |
-| 验证 | 20 – 30% | 要证据不要结论：复现、对抗性自审、人签字 |
+| Scaffolding | < 10% | One-page threat model, invariant checklist, hard limits |
+| Slice audit | 60 – 80% | Targeted audit of one trust boundary: white-box code reading, black-box verification, sub-agent slicing |
+| Verification | 20 – 30% | Evidence, not conclusions: reproduction, adversarial self-review, human sign-off |
 
-比例本身不神圣，它的用处是当你发现脚手架超了
-10%，就该砍规则文件而不是加窗口。这条贯穿本文所有章节——规则文件为什么要控制在一页、大文件为什么必须走索引、为什么每条结论都要人复核，都可以用它来解释。
+The ratio itself isn't sacred — its use is that when you notice scaffolding has gone over
+10%, you should cut the rules file, not add more context window. This runs through every section of this piece — why the rules file has to stay to one page, why large files have to go through an index, why every conclusion needs human review — it can all be explained by this ratio.
 
-| **怎么把比例换算成字数**　按 1 个汉字约 1 个 token 粗估，一页 A4 中文大约 800 到 1000 字，也就是 1k token 上下。20 万 token 的有效窗口，10% 的脚手架上限是 2 万 token，约合 20 页纸——听起来很宽裕。但别忘了工具返回也吃这份预算：一次 list_network_requests 可能就是几千 token，一个中等 MCP 服务器光工具定义就要几千。真正留给规则文件的，一页才是合适的量。 |
+| **How to convert the ratio into a word count**　Rough estimate: about 1 token per Chinese character, so one A4 page of Chinese text is roughly 800–1000 characters, i.e. around 1k tokens. With a 200k-token effective window, a 10% scaffolding cap is 20k tokens — about 20 pages worth. Sounds generous. But don't forget tool returns eat into that budget too: a single list_network_requests call can run several thousand tokens, and a mid-sized MCP server's tool definitions alone can cost a few thousand. What's actually left for the rules file is about one page. |
 |----|
 
-## 第一部分：裸用 AI 为什么不行
+## Part One: Why Using AI Raw Doesn't Work
 
 
 ------------------------------------------------------------------------
 
-大多数人拿到 Claude Code
-的第一件事，是把整个仓库丢进去说"找出所有漏洞"。这条路走不通，原因有四个：前两个是模型行为，后两个是工程缺失。四个都不是换更强的模型能解决的。
+Most people's first move with Claude Code
+is to dump the whole repo in and say "find all the vulnerabilities." That doesn't work, for four reasons: the first two are model behavior, the last two are missing engineering. None of the four get fixed by switching to a stronger model.
 
-### 1.1 没有威胁模型时，模型做的是检索
+### 1.1 Without a Threat Model, the Model Just Does Retrieval
 
-你不说攻击者是谁、信任边界在哪、攻击者能控制什么，模型就没有"影响"这个概念。它能凭训练数据猜出一些通用
-CWE，但猜得很差。结果是一长串"理论上可能存在 XSS""建议检查 SQL
-拼接"，没有优先级，你也没法从噪音里挑出值得跟进的。
+If you don't say who the attacker is, where the trust boundaries are, or what the attacker can control, the model has no concept of "impact." It can guess at some generic
+CWEs from its training data, but it guesses badly. The result is a long list of "theoretically possible XSS," "suggest checking SQL
+concatenation" — no priority, and you can't pick out what's worth following up on from the noise.
 
-技术上的原因值得说透，因为后面几乎所有设计都是冲着它去的。在没有约束的情况下，LLM
-做的是模式召回，不是可达性分析。它从训练分布里检索"这类代码通常有什么漏洞"，输出的是一个先验分布。而真正的漏洞判定要回答的是另一个问题：
+The technical reason is worth spelling out, because almost every design choice later in this piece is aimed at it. Without constraints, an
+LLM
+does pattern recall, not reachability analysis. It retrieves "what vulnerabilities this kind of code usually has" from its training distribution and outputs a prior. What a real vulnerability determination actually needs to answer is a different question:
 
-| 这段代码在这个信任边界下，攻击者能否触达；触达之后，能否越过边界。 |
+| Given this trust boundary, can the attacker reach this code; and once they've reached it, can they cross the boundary. |
 |--------------------------------------------------------------------|
 
-写成条件概率大概是 P(可利用 | 代码, 信任边界, 攻击者能力,
-可达路径)。后面三个条件项你不给，模型手里就只剩 P(可利用 |
-代码)——一个脱离语境的无条件先验。它输出的那堆"理论漏洞"，本质上是把训练集里这类代码的平均风险念了一遍。
+Written as a conditional probability, it's roughly P(exploitable | code, trust boundary, attacker capability,
+reachable path). If you don't supply the last three conditioning terms, all the model has left is P(exploitable |
+code) — an unconditioned prior stripped of context. That pile of "theoretical vulnerabilities" it outputs is essentially reciting the average risk of that kind of code from its training set.
 
-Devansh
-那篇文章里有句话可以直接抄进规则文件：威胁建模是安全审计的终极压缩算法。一页纸的威胁模型能替代几十页的通用规则，因为它填的是条件项，不是增加信息量。这两件事在
+Devansh's
+piece has a line worth copying straight into your rules file: threat modeling is the ultimate compression algorithm for security auditing. A one-page threat model can replace dozens of pages of generic rules, because it fills in conditioning terms, not raw information. The difference on the
 token
-账上的差别极大：通用规则是往上下文里加噪声，条件项是把搜索空间砍掉几个数量级。
+ledger is enormous: generic rules add noise to the context; conditioning terms cut the search space by orders of magnitude.
 
-### 1.2 宽问题把推理预算摊薄
+### 1.2 Broad Questions Dilute the Reasoning Budget
 
-这个更隐蔽，因为它的产出看起来很丰盛。广问题引出广回答，模型会去匹配它见过的常见模式，哪怕在你的上下文里根本不可能触发。你最终在审一些没有任何攻击者能到达的路径，花几万
-token 买回一堆不可复现的清单。原文管这叫 breadth-first hallucination。
+This one's sneakier, because the output looks abundant. A broad question draws a broad answer — the model matches whatever common patterns it's seen, even when there's no way they'd trigger in your context. You end up auditing paths no attacker could ever reach, spending tens of thousands of
+tokens on a list that doesn't reproduce. The original piece calls this breadth-first hallucination.
 
-机制有两层，拆开看才好对症：
+There are two mechanisms at play here, worth separating out:
 
-**▪ 推理预算被摊薄。**
-一个覆盖整个仓库的宽问题，让模型把有限的推理分到每个文件上，每个文件只够做表层匹配。注意力是有限资源，你给的范围越大，单位代码上分到的越少。
+**▪ The reasoning budget gets diluted.**
+A broad question spanning the whole repo splits the model's limited reasoning across every file, so each file only gets a surface-level pass. Attention is a finite resource — the bigger the scope you give it, the less falls on any given unit of code.
 
-**▪ 输出策略在优化错误的目标。** 宽问题下，"列了 20
-个方向"看起来比"深挖了 1
-个方向"更像回答了"所有漏洞"这个问题。所以模型倾向于给覆盖面——它在优化它以为你要的东西，而不是你真正要的东西。
+**▪ The output strategy optimizes for the wrong target.** Under a broad question, "listed 20
+directions" looks more like it answered "all the vulnerabilities" than "went deep on 1
+direction" does. So the model tends toward coverage — it's optimizing for what it thinks you want, not what you actually want.
 
-还有一个叫 context rot
-的现象叠加在上面：上下文越长，模型的可靠性越下降，而且不是到窗口上限才突然崩，是一路缓慢劣化。所以"把更多材料塞进去"这个动作本身就是反向操作。标称
-20 万 token
-的窗口，实际能稳定推理的有效部分远小于这个数——工程上要按有效窗口规划，不能按标称窗口规划。
+There's another phenomenon called context rot
+stacked on top of this: the longer the context, the less reliable the model gets, and it doesn't suddenly break at the window limit — it degrades gradually the whole way. So "stuff more material in" is itself the wrong move. A nominal
+200k-token
+window has a stable, effective reasoning portion far smaller than that number — plan around the effective window, not the nominal one.
 
-### 1.3 会话无状态，重复劳动烧两份钱
+### 1.3 Sessions Are Stateless — Duplicate Work Burns Money Twice
 
-每个新会话都从零开始。上一轮已经测过并否定的假设，这一轮换个说法又跑一遍；上个项目总结的模式，这个项目完全用不上。
+Every new session starts from zero. A hypothesis already tested and disproven last round gets rerun this round under different wording; patterns summarized from the last project are completely unavailable to this one.
 
-代价是双份的。token
-在烧，目标请求配额也在烧，后者更值钱，因为它受目标侧风控限制，是硬约束——token
-花完可以充钱，IP 被封了就得等。
+The cost is doubled. Tokens
+burn, and so does the target's request quota — and the latter is worth more, because it's bound by the target's rate-limiting/risk-control, a hard constraint. Run out of tokens and you can top up; get your IP banned and you have to wait.
 
-多人协作时这个问题会放大。三个人各跑各的会话，同一个接口被测三遍，既浪费预算，也真实地增加了触发风控的概率。我们在一个
+This problem compounds with multiple people working together. Three people each run their own sessions, the same endpoint gets tested three times — wasting budget and genuinely raising the odds of tripping risk control. We paid for this on an
 OTA
-目标上吃过这个亏：两个人分别测了订单查询的越权，用词不同、结论一致，多出来的那一遍请求没产生任何新信息，但确确实实进了目标的风控计数器。
+target: two people separately tested the same order-query broken access control, worded differently, same conclusion — the extra pass produced no new information but did land in the target's risk-control counter.
 
-### 1.4 没有边界意识，这是风险不是效率
+### 1.4 No Sense of Boundaries — This Is a Risk Problem, Not an Efficiency One
 
 AI
-没有法律意识。给它一个域名，它会顺手去探旁站；让它验证一个下单接口的越权，它可能真的下一单；让它测短信接口，它会把验证码打给真人。
+has no sense of legality. Give it a domain, and it'll casually go poke at adjacent hosts; ask it to verify broken access control on an order-placement endpoint, and it might actually place an order; ask it to test an SMS endpoint, and it'll send the verification code to a real person.
 
-这些不是模型的
-bug，是它没有被告知边界。边界是人写进文件它才知道的，没写，它会自己判断，而且通常判错——它的判断依据是"这样做对完成任务有帮助"，不是"这样做会不会越界"。
+These aren't model
+bugs — the model was never told where the boundary is. It only knows a boundary if a human writes it into a file; if it isn't written down, the model decides for itself, and it usually decides wrong — its judgment is based on "does this help complete the task," not "does this cross a line."
 
-前三条是效率问题，这一条是风险问题。对内部汇报来说它也是最该强调的一点：工作台的规则层不只是让
+The first three points are efficiency problems; this one is a risk problem. For an internal report, it's also the point most worth emphasizing: the workbench's rules layer doesn't just make
 AI
-跑得更准，它把合规约束从"靠测试人员自觉"变成了"写进配置、全程留痕"。第三部分会给出三层
-scope 护栏的具体配置。
+run more accurately — it turns compliance from "relying on the tester's good judgment" into "written into config, logged the whole way through." Part Three gives the concrete configuration for the three-tier
+scope guardrails.
 
-### 1.5 三个反例：别人是怎么挖出来的
+### 1.5 Three Counter-Examples: How Other People Actually Found Them
 
-Needle in the Haystack 的作者在两个月里用这套方法报了 30
-多个漏洞。挑三个能说明问题的：
+The author of Needle in the Haystack reported 30-plus
+vulnerabilities in two months using this method. Three worth picking apart:
 
 #### Parse Server　CVE-2026-29182 / 30228 / 30229
 
-先翻历史
-CVE，发现全是权限校验不完整。据此让模型生成聚焦"权限边界执行"的威胁模型，然后盯住一个具体边界：只读管理员
-key。模型发现多个路由 handler 只查了 isMaster 没查
-isReadOnly。这是一个模式而不是一个点，于是用更窄的提示词让它枚举所有符合这个模式的
-handler——三个 CVE 同一个根因。
+Started by going through historical
+CVEs and found they were all incomplete permission checks. Used that to have the model generate a threat model focused on "permission-boundary enforcement," then zeroed in on one specific boundary: the read-only admin
+key. The model found multiple route handlers that checked isMaster but not
+isReadOnly. That's a pattern, not a single point, so a narrower prompt had it enumerate every handler matching that pattern —
+three CVEs, one root cause.
 
-#### ElysiaJS　cookie 签名校验
+#### ElysiaJS　Cookie Signature Verification
 
-切片选的是 cookie 签名校验。找到的问题是一行初始化写反了，let decoded =
-true 本该是 false，导致密钥轮换期间无效 cookie 不会被拒。这种 bug
-静态扫描器基本抓不到，因为语法完全合法，错的是语义——而语义恰好是 LLM
-相对扫描器的唯一优势所在。
+The slice chosen was cookie signature verification. The bug found was a single initialization flipped backward — let decoded =
+true should have been false, which meant invalid cookies weren't rejected during key rotation. Static scanners basically can't catch this kind of bug, because the syntax is completely valid — what's wrong is the semantics, and semantics happen to be the one place an
+LLM
+has a real edge over a scanner.
 
 #### harden-runner　CVE-2026-25598
 
-威胁模型只有一句话：攻击者能不能绕过出站管控把数据传出去。然后做系统调用覆盖度分析，发现
-UDP 那几个（sendto / sendmsg /
-sendmmsg）没被监控。同样的问题问另一个项目
-BullFrog，因为它用网络层防火墙而不是系统调用插桩，切片就完全不同：DNS
-解析、IP 到域名的绑定、提权路径。
+The threat model was one sentence: can an attacker bypass egress controls to exfiltrate data. Then did a syscall-coverage analysis and found the
+UDP calls (sendto / sendmsg /
+sendmmsg) weren't being monitored. Asking the same question of a different project,
+BullFrog, produced a completely different slice, because it uses a network-layer firewall instead of syscall instrumentation: DNS
+resolution, IP-to-domain binding, privilege-escalation paths.
 
-注意这三个的共同点：没有 20 页的 Agent.md，没有庞大的 Skill
-库，没有全量扫描。做的是四件事——选好切片、从历史反推威胁模型、让模型找不变量违反、跟进信号。
+Notice what these three have in common: no 20-page Agent.md, no giant Skill
+library, no full-repo scan. Just four things — pick a good slice, work the threat model backward from history, have the model hunt for invariant violations, follow up on the signal.
 
-Anthropic 用 Claude 审 Firefox 也是这个顺序：先从 JavaScript
-引擎切入，跑通流程之后才扩到约 6000 个 C++ 文件，最终提交 112
-份报告，大部分修复进了 Firefox 148.0，API
-花费约四千美元。先窄后宽、先跑通闭环再放大规模，是这几个案例唯一的共同结构。
+Anthropic auditing Firefox with Claude followed the same order: started narrow with the JavaScript
+engine, and only after that loop was working did it expand to roughly 6,000 C++ files, eventually filing 112
+reports, most of which were fixed in Firefox 148.0, at an
+API cost of about four thousand dollars. Narrow first, then broad; get the loop working before scaling up — that's the one structural thing all these cases share.
 
-### 1.6 顺带说清楚模型的几个已知偏好
+### 1.6 A Few Known Model Biases, While We're At It
 
-这几条会在第七部分变成具体的提问技巧，这里先摆出来，因为后面很多设计是冲着它们去的：
+These will turn into concrete prompting techniques in Part Seven — laid out here first, because a lot of what follows is designed around them:
 
-**▪ 首尾位置效应。**
-放在上下文窗口两端的信息被用得更好，埋在中间的最容易被忽略。所以关键约束要么放最前，要么在任务书里重申一遍。
+**▪ Primacy/recency effect.**
+Information placed at the two ends of the context window gets used better; anything buried in the middle is the easiest to overlook. So key constraints should either go right up front, or get restated in the task brief.
 
-**▪ 默认顺从。**
-不特别提示时，模型倾向于说代码是安全的。"整体看起来没问题，有一些小的关注点"是阻力最小的答案。
+**▪ Default compliance.**
+Without a specific prompt, the model tends to say the code is fine. "Overall looks OK, a few minor points to watch" is the path of least resistance.
 
-**▪ 完整性前置。** 它最有把握的发现排在最前面，细微的 bug
-要靠追问才出来。所以"还有别的吗"这句话要多问几轮。
+**▪ Completeness front-loading.** Its most confident findings come first; the subtle bugs only surface if you keep asking. So "anything else?" needs to be asked several rounds running.
 
-**▪ 抽象指令吃不住，具体边界吃得住。** 给它"注意安全性"没用，给它"只读
-key 不能触发写操作"它能顺着查。
+**▪ Abstract instructions don't stick, concrete boundaries do.** Telling it "pay attention to security" does nothing; telling it "the read-only key must never trigger a write operation" gives it something to actually check against.
 
-**▪ 倾向于把代码合理化。**
-看到一段可疑写法，它的默认假设是"作者这么写有他的道理"，然后开始替作者圆。这条在
-7.3 的技巧 07 里被专门针对。
+**▪ Tends to rationalize code.**
+Seeing a suspicious-looking piece of code, its default assumption is "the author must have had a reason for this," and then it starts making excuses on the author's behalf. This one gets specifically countered in technique 07 of section 7.3.
 
-这五条里，前两条决定了规则文件怎么放、放多长，后三条决定了话该怎么问。它们不是缺陷清单，是这套方法的设计输入。
+Of these five, the first two determine how the rules file is laid out and how long it should be; the last three determine how you phrase questions. They aren't a list of flaws — they're design inputs for this whole method.
 
-## 第二部分：架构
+## Part Two: Architecture
 
 
 ------------------------------------------------------------------------
 
-工作台是六层东西叠起来，让模型能看见目标、动手操作、记住结论、守住边界。每一层可以独立替换，这是整套设计里最值钱的性质——不是因为它优雅，是因为
-2026 年这一行里价格、可用性、合规要求每个季度都在变。
+The workbench is six layers stacked together, so the model can see the target, take action, remember its conclusions, and stay within bounds. Each layer can be swapped out independently, and that's the single most valuable property of the whole design — not because it's elegant, but because in 2026 pricing, availability, and compliance requirements in this space shift every quarter.
 
-### 2.1 六层结构
+### 2.1 The Six-Layer Structure
 
-| **层** | **名字** | **装什么** | **说明** |
+| **Layer** | **Name** | **What's in it** | **Notes** |
 |----|----|----|----|
-| L6 | 台账层 | journal/　tested.md　findings.md | 本目标测了什么、结果如何、证据在哪。防重复的账本，也是交接文档 |
-| L5 | 能力层 | 浏览器驱动 · 抓包 · 解包 · 反编译 · 运行时 hook | 模型的手。三种形态只有这一层不同 |
-| L4 | 记忆层 | patterns.md　techniques.md　tools.md | 跨目标复用的知识。新目标冷启动靠它 |
-| L3 | 规则层 | CLAUDE.md + 每目标 scope.md / threat-model.md | 授权范围、红线、工作约定 |
-| L2 | 终端层 | Claude Code / Codex / 兼容接口客户端 | 管会话、工具调用、子 agent 派发、上下文 |
-| L1 | 模型层 | 主模型 + 备用模型 | 纯推理能力。可替换，而且应该保持可替换 |
+| L6 | Ledger layer | journal/　tested.md　findings.md | What's been tested on this target, the outcome, where the evidence is. A ledger against duplicate work, and a handoff document |
+| L5 | Capability layer | Browser driver · traffic capture · unpacking · decompilation · runtime hooking | The model's hands. The only layer that differs across the three target form factors |
+| L4 | Memory layer | patterns.md　techniques.md　tools.md | Knowledge reused across targets. What a new target's cold start relies on |
+| L3 | Rules layer | CLAUDE.md + per-target scope.md / threat-model.md | Authorization scope, hard limits, working conventions |
+| L2 | Terminal layer | Claude Code / Codex / compatible-API clients | Manages sessions, tool calls, sub-agent dispatch, context |
+| L1 | Model layer | Primary model + fallback model | Pure reasoning capability. Swappable, and should stay swappable |
 
-L1 和 L2 是买来的，L3 和 L4 是写出来的，L5 是装出来的，L6
-是跑出来的。一次性投入主要花在 L3 和 L5，长期价值沉淀在 L4 和
-L6。汇报的时候这句话可以直接用：**你付的五个人日买的是 L3 和
-L5，你留下的资产是 L4 和 L6。**
+L1 and L2 are bought, L3 and L4 are written, L5 is installed, L6
+is generated by running the process. The one-time investment mostly goes into L3 and L5; the long-term value accumulates in L4 and
+L6. For a report, this line works directly: **what your five person-days bought is L3 and
+L5; what you're left holding is L4 and L6.**
 
-### 2.2 数据流：假设是一等公民
+### 2.2 Data Flow: The Hypothesis Is a First-Class Citizen
 
-整条流程的核心对象不是"代码"也不是"漏洞"，是假设——一条形如"只读 key
-不能触发写操作"的、可以被证实或证伪的断言。每个假设有编号、状态、证据。围绕假设组织，流程就自然闭环了。
+The core object of the whole pipeline isn't "code" or "vulnerability" — it's the hypothesis: a falsifiable assertion of the form "the read-only key must never trigger a write operation." Every hypothesis has a number, a status, and evidence. Organize around hypotheses and the pipeline closes the loop on its own.
 
-| **环节** | **干什么**                         | **产物**           |
+| **Stage** | **What happens**                         | **Output**           |
 |----------|------------------------------------|--------------------|
-| 观测     | 抓包 / 解包 / 反编译               | 原始材料 + 索引    |
-| 资产化   | 把原始材料压成结构化的表           | 路由表、身份字段表 |
-| 不变量   | 找出代码声称永远成立的事           | invariants.md      |
-| 假设     | 给每条不变量配编号、判据、请求预算 | tested.md 新增行   |
-| 验证     | AI 驾驶工具去证伪，命中即停        | 证据三件套         |
-| 复核     | 人独立复现                         | hit 降级或确认     |
-| 台账     | 命中与否定都记                     | 回流给下一轮       |
+| Observation     | Traffic capture / unpacking / decompilation               | Raw material + index    |
+| Asset-building   | Compress raw material into structured tables           | Route table, identity-field table |
+| Invariants   | Find what the code claims always holds true           | invariants.md      |
+| Hypothesis     | Assign each invariant a number, a criterion, a request budget | New row in tested.md      |
+| Verification     | AI drives the tooling to try to disprove it, stops on a hit        | The evidence three-piece set         |
+| Review     | Independent human reproduction                         | Hit gets downgraded or confirmed     |
+| Ledger     | Records both hits and disproven hypotheses                     | Feeds back into the next round       |
 
-关键在最后那段回流：台账反过来喂给下一轮的假设环节。没有这条回流，整条流程是开环的，每一轮都在重复上一轮。很多团队搭到一半就上线，跑几周之后发现成本没降，根因基本都在这里。
+The key part is that last feedback loop: the ledger feeds back into the next round's hypothesis stage. Without that feedback, the whole pipeline is open-loop, and every round just repeats the last one. A lot of teams ship halfway through building this, run it for a few weeks, and find costs haven't dropped — the root cause is almost always right here.
 
-#### 假设的状态机
+#### The Hypothesis State Machine
 
-台账之所以能起作用，是因为假设的状态是有限的、可判定的。我们只允许这几个状态，多一个都不行：
+The ledger works because a hypothesis's status set is finite and decidable. We allow only these states — not one more:
 
-| **状态** | **含义**             | **进入条件**                                 |
+| **State** | **Meaning**             | **Entry condition**                                 |
 |----------|----------------------|----------------------------------------------|
-| hit      | 命中                 | 有证据三件套，且人复核通过                   |
-| miss     | 已测且否定           | 测过，且写明了否定原因                       |
-| blocked  | 测了但被拦或无法判定 | WAF 拦截、需要的前置条件拿不到、超出授权范围 |
+| hit      | Confirmed hit                 | Has the evidence three-piece set, and passed human review                   |
+| miss     | Tested and disproven           | Tested, with the reason for disproving it written down                       |
+| blocked  | Tested but blocked or undecidable | WAF blocked it, a required precondition couldn't be obtained, or it's outside authorized scope |
 
-没有"待定"。待定的东西留在 journal/ 里，不进
-tested.md。这个限制看着教条，但它是台账能被模型可靠使用的前提：状态枚举一旦开放，模型就会开始创造"部分命中""疑似"这类无法过滤的值，台账立刻退化成散文。
+There's no "pending." Anything pending stays in journal/, it doesn't go into
+tested.md. This restriction looks rigid, but it's the precondition for the ledger being reliably usable by the model: the moment you open up the state enum, the model starts inventing unfilterable values like "partial hit" or "suspected," and the ledger degrades straight into prose.
 
-#### 什么是不变量
+#### What an Invariant Is
 
-不变量是代码声称永远成立的事。几个例子：
+An invariant is something the code claims always holds. A few examples:
 
-**▪** 只读 key 不能触发写操作
+**▪** A read-only key must never trigger a write operation
 
-**▪** JWT 的 issuer 必须等于配置值
+**▪** A JWT's issuer must equal the configured value
 
-**▪** 这个字段必须从服务端会话取，不能从请求体取
+**▪** This field must come from the server-side session, never from the request body
 
-**▪** 分发器转发给下游的身份，必须来自网关校验后的上下文
+**▪** The identity the dispatcher forwards downstream must come from the context validated by the gateway
 
-**▪** preload
-暴露的特权接口，只能被自有域名的页面调用（第五部分那个案例，根因就是这条不成立）
+**▪**
+Privileged interfaces exposed via preload can only be called by pages on the app's own domain (this is the case study in Part Five, where the root cause was this exact invariant not holding)
 
-找不变量有个必须遵守的细节：把"列假设"和"判断假设是否被违反"拆成两步问。模型单独做"列出这个模块所有隐含安全假设"很在行，单独判断"假设
+There's a detail you have to follow when hunting for invariants: split "list the hypotheses" and "determine whether a hypothesis is violated" into two separate questions. The model is quite good at "list all the implicit security assumptions in this module" on its own, and it also reasons deeply when asked separately whether "hypothesis
 X
-在这条路径上是否成立"也推理得很深。两件事塞进同一个提示词，结果通常很浅——它试图同时做两件事，会早早满足于一个及格答案。第七部分把这条做成了模板。
+holds on this path." Cram both into the same prompt and the result is usually shallow — it tries to do both at once and settles early for a passing-grade answer. Part Seven turns this into a template.
 
-### 2.3 分层换来的三件事
+### 2.3 Three Things Layering Buys You
 
-| **性质** | **因为哪层被隔离** | **实际意味着什么** |
+| **Property** | **Which layer's isolation causes it** | **What it actually means** |
 |----|----|----|
-| 换模型不动流程 | L1 与 L3‒L6 解耦 | 国外模型涨价、被封号、或客户要求数据不出境时，换国内模型只改环境变量，规则记忆台账工具全部照用 |
-| 换目标不丢知识 | L4 与 L6 分离 | 记忆层存"哪类地方容易坏"，台账层存"这个目标测到哪了"。新目标继承前者、清空后者 |
-| 换人不丢上下文 | L6 结构化 | 台账本身就是交接文档。人员轮换或多人并行时读 tested.md 就知道从哪接手 |
+| Swapping models doesn't touch the pipeline | L1 decoupled from L3‒L6 | When a foreign model's price jumps, an account gets banned, or a client requires data to stay in-country, switching to a domestic model is just an environment-variable change — rules, memory, ledger, and tools all keep working as-is |
+| Swapping targets doesn't lose knowledge | L4 separated from L6 | The memory layer stores "what kind of place tends to break"; the ledger layer stores "how far testing has gotten on this target." A new target inherits the former and starts the latter fresh |
+| Swapping people doesn't lose context | L6 is structured | The ledger itself is a handoff document. When staff rotate or multiple people work in parallel, reading tested.md tells you exactly where to pick up |
 
-第一条在 2026
-年尤其实在。这一年我们换过两次主力模型，一次是因为涨价，一次是因为客户要求数据不出境。两次切换的实际工作量都是改两个环境变量加跑一遍探活，规则文件、记忆层、台账、MCP
-配置一个字没动。如果当初把方法写死在某家的 Skill
-体系里，这两次每次都是一周。
+The first point has been especially concrete in 2026
+. We switched primary models twice this year — once because of a price hike, once because a client required data to stay in-country. Both switches were, in practice, changing two environment variables and running a health check; the rules file, memory layer, ledger, and MCP
+config didn't change by a single character. If the method had been hard-wired into one vendor's Skill
+system from the start, each of those switches would have cost a week.
 
-### 2.4 脚手架多少算刚好
+### 2.4 How Much Scaffolding Is Just Right
 
-这是最容易做反的一条。很多团队的第一反应是写一份事无巨细的规则文档、预加载一个庞大的知识库，结果效果比什么都不写还差。
+This is the point most teams get backward. The first instinct for a lot of teams is to write an exhaustive rules document and preload a giant knowledge base — and the result performs worse than writing nothing at all.
 
-| **够用的脚手架**   | **过量的脚手架**                            |
+| **Scaffolding that's enough**   | **Scaffolding that's too much**                            |
 |--------------------|---------------------------------------------|
-| 一页纸威胁模型     | 二十页 Agent.md，塞进每条政策和风格指南     |
-| 三五条关键功能清单 | 庞大的 Skill 库，预加载几十个文件           |
-| 几条明确的不变量   | 让 AI"找出所有漏洞"，期望它自己搞明白上下文 |
-| 指向一个信任边界   | 把整个代码库丢进去不指定方向                |
-| 按需取用的文件索引 | 把大文件整份喂进上下文                      |
+| A one-page threat model     | A twenty-page Agent.md stuffed with every policy and style guideline     |
+| A list of three to five key functions | A huge Skill library, dozens of preloaded files           |
+| A handful of clear invariants   | Telling AI to "find all the vulnerabilities" and expecting it to figure out the context itself |
+| Pointing at one trust boundary   | Dumping the whole codebase in with no direction                |
+| An on-demand file index | Feeding an entire large file into context whole                      |
 
-脚手架的作用是把注意力锚定到正确的地方，一页纸足够。二十页的规则文件反而把注意力稀释了：模型要花
-token 理解你的规矩，留给分析代码的推理空间就少了。
+Scaffolding's job is to anchor attention on the right place — one page is enough. A twenty-page rules file actually dilutes attention: the model has to spend
+tokens understanding your rules, which leaves less reasoning room for analyzing the code.
 
-这可以直接算。一份 20 页的规则文件大约吃掉一万五到两万 token。按 10%
-的上限倒推，只有当你的有效工作窗口在二十万 token
-以上时它才勉强合规——而有效窗口远小于标称窗口，这正是 context rot
-的含义。更别提规则文件不是唯一的常驻开销：MCP
-的工具定义、系统提示、目录列表都要占位置，这些加起来经常比规则文件本身还大。
+This can be worked out directly. A 20-page rules file eats up roughly fifteen to twenty thousand tokens. Working backward from the 10%
+cap, it's only barely compliant if your effective working window is above two hundred thousand tokens
+— and the effective window is far smaller than the nominal one, which is exactly what context rot
+means. And the rules file isn't the only standing overhead, either: MCP
+tool definitions, the system prompt, directory listings all take up space, and together they often outweigh the rules file itself.
 
-| **一条可执行的判据**　规则文件超过一页就该反思：是不是把"每次都要遵守的红线"和"某类任务才需要的方法"混在一起了。前者进 CLAUDE.md 常驻，后者进任务书、用时才给。这个拆分能让常驻部分稳定控制在一页以内，是下一部分 Step 2 的核心设计。 |
+| **An actionable rule of thumb**　If your rules file goes over one page, that's the moment to ask whether you've mixed "hard limits that must be followed every single time" with "methods only needed for certain task types." The former belongs in CLAUDE.md as standing content; the latter belongs in the task brief, supplied only when needed. This split is what lets the standing portion stay reliably under one page — it's the core design behind Step 2 in the next part. |
 |----|
 
-## 第三部分：搭建
+## Part Three: Building It
 
 
 ------------------------------------------------------------------------
 
-七个步骤，从接模型一直到最小闭环验收。每步给出可直接抄的配置和这一步特有的坑。按顺序做完大约五个人日。三种目标形态的专用工具在第四到第六部分，这里只搭与形态无关的骨架。
+Seven steps, from wiring up the model all the way to a minimal closed-loop acceptance check. Each step comes with configuration you can copy directly and the pitfalls specific to it. Done in order, it takes about five person-days. The tools specific to each of the three target form factors are in Parts Four through Six — this part only builds the form-factor-agnostic skeleton.
 
-| **小节**     | **这一步产出什么**                               |
+| **Section**     | **What this step produces**                               |
 |--------------|--------------------------------------------------|
-| 3.0 接模型   | 主备双模 + 一键切换 + 探活脚本                   |
-| 3.1 目录骨架 | 可复制的 workbench/，新目标改配置不改流程        |
-| 3.2 规则层   | 一页纸 CLAUDE.md，六条红线写死                   |
-| 3.3 记忆层   | patterns / techniques / tools 三文件与召回提示词 |
-| 3.4 能力层   | .mcp.json、索引策略、三层 scope 护栏             |
-| 3.5 台账层   | tested.md 假设矩阵                               |
-| 3.6 子 agent | 任务书模板与分片原则                             |
-| 3.7 验收     | 十条可观测的检查，缺一条都不算搭完               |
+| 3.0 Connecting the model   | Primary + fallback dual-model setup + one-key switch + health-check script                   |
+| 3.1 Directory skeleton | A copyable workbench/ — new targets change config, not process        |
+| 3.2 Rules layer   | A one-page CLAUDE.md, six hard limits locked in                   |
+| 3.3 Memory layer   | The patterns / techniques / tools trio and recall prompts |
+| 3.4 Capability layer   | .mcp.json, indexing strategy, three-tier scope guardrails             |
+| 3.5 Ledger layer   | The tested.md hypothesis matrix                               |
+| 3.6 Sub-agents | Task-brief template and slicing principles                             |
+| 3.7 Acceptance     | Ten observable checks — missing even one means it's not done               |
 
-### 3.0 接模型
+### 3.0 Connecting the Model
 
-先说结论：做一主一备，别二选一。兼容接口让切换成本接近于零，不用它是浪费。
+The conclusion up front: run one primary and one fallback, don't pick just one. Compatible APIs make switching cost nearly nothing — not using that is wasteful.
 
-#### 决策的四个变量
+#### Four Variables for the Decision
 
-| **变量** | **看什么** |
+| **Variable** | **What to look at** |
 |----|----|
-| 能力 | 写代码、改大项目、跑长任务的一次通过率。看第三方榜单，别只看厂商自己的数 |
-| 价格 | 编程智能体输出量大，主要看输出价不是输入价 |
-| 可用性 | 能不能注册、能不能付钱、要不要节点、会不会封号 |
-| 数据合规 | 客户代码和流量能不能出境。不能出境，国外模型直接排除 |
+| Capability | One-shot pass rate on writing code, editing large projects, running long tasks. Check third-party leaderboards, not just the vendor's own numbers |
+| Price | Coding agents produce a lot of output, so look mainly at output pricing, not input pricing |
+| Availability | Can you register, can you pay, do you need a proxy node, will the account get banned |
+| Data compliance | Can client code and traffic leave the country. If not, foreign models are ruled out immediately |
 
-#### 2026-09 的牌面
+#### The Lineup as of 2026-09
 
-| **厂商** | **主力模型** | **特点** | **接入方式** |
+| **Vendor** | **Primary model** | **Notes** | **Access method** |
 |----|----|----|----|
-| Anthropic | Claude Fable 5.1 / Opus 5 / Sonnet 5 / Haiku 4.5 | 编程智能体第一梯队；Claude Code 是官方工具 | 订阅 Pro / Max，或 API |
-| OpenAI | GPT-6 Astra / GPT-5.6 Sol · Terra / GPT-5.3 Codex | 同一梯队；Codex 是官方工具 | 订阅 Go / Plus / Pro，或 API |
-| DeepSeek | V4 Pro / V4 Flash | 便宜、开源权重；8 月起涨价并分峰谷时 | API 按量，无订阅 |
-| 智谱 | GLM-5.3 / GLM-5.3-Flash | 开源里编程最强一档；有 Anthropic 兼容接口 | Coding Plan 订阅，或 API |
-| 月之暗面 | Kimi K3 / K2.7-code | K3 是国内最大（2.8T）；有兼容接口 | Kimi Code 套餐，或 API |
-| 阿里 | Qwen3.8-Max | 生态大，百炼平台；夜间有折扣 | Token Plan，或 API |
+| Anthropic | Claude Fable 5.1 / Opus 5 / Sonnet 5 / Haiku 4.5 | Top tier for coding agents; Claude Code is the official tool | Pro / Max subscription, or API |
+| OpenAI | GPT-6 Astra / GPT-5.6 Sol · Terra / GPT-5.3 Codex | Same tier; Codex is the official tool | Go / Plus / Pro subscription, or API |
+| DeepSeek | V4 Pro / V4 Flash | Cheap, open weights; price hike with peak/off-peak pricing starting August | Pay-as-you-go API, no subscription |
+| Zhipu | GLM-5.3 / GLM-5.3-Flash | Strongest coding performance among open models; has an Anthropic-compatible API | Coding Plan subscription, or API |
+| Moonshot AI | Kimi K3 / K2.7-code | K3 is the largest domestic model (2.8T); has a compatible API | Kimi Code plan, or API |
+| Alibaba | Qwen3.8-Max | Large ecosystem, Bailian platform; discounted at night | Token Plan, or API |
 
-Artificial Analysis 的智能体指数（2026-09-18）排下来是这个次序：Claude
-Fable 5.1 与 GPT-6 Astra 并列 60，Claude Opus 5 是 59，GPT-5.6 Sol
-55，GLM-5.3 54，Kimi K3 52，Qwen3.8-Max 与 DeepSeek V4 Pro 同为 43。差
-10
-分不是不能用，是复杂重构和长任务的一次通过率低一些，多来一轮通常也能做完。
+Artificial Analysis's agentic index (as of 2026-09-18) ranks them in this order: Claude
+Fable 5.1 tied with GPT-6 Astra at 60, Claude Opus 5 at 59, GPT-5.6 Sol
+at 55, GLM-5.3 at 54, Kimi K3 at 52, Qwen3.8-Max tied with DeepSeek V4 Pro at 43. A
+10-point
+gap doesn't mean unusable — it means a somewhat lower one-shot pass rate on complex refactors and long tasks; an extra round usually gets it done anyway.
 
-API 输出价是大头。国外第一梯队 25 到 50 美元每百万 token，国内 GLM-5.3
-和 DeepSeek 只要 4 美元左右，差六到十二倍。订阅方面：Claude Pro 20 美元
-/ Max 100 / Max 20x 200；GLM Coding Plan ¥118‒1078；Kimi Code
-¥49‒699；DeepSeek 纯按量。
+API output pricing is the big line item. Foreign top-tier models run 25 to 50 USD per million tokens; domestic GLM-5.3
+and DeepSeek run only around 4 USD — a 6-to-12x difference. On subscriptions: Claude Pro is 20 USD
+/ Max 100 / Max 20x 200; GLM Coding Plan ¥118‒1078; Kimi Code
+¥49‒699; DeepSeek is pure pay-as-you-go.
 
-#### 国外模型的四个坎
+#### Four Hurdles With Foreign Models
 
-| **卡点** | **情况** | **怎么办** |
+| **Blocker** | **Situation** | **Workaround** |
 |----|----|----|
-| 地区 | 不对中国大陆提供服务 | 要节点；公司走 Bedrock / Vertex 等云托管入口 |
-| 注册 | 不接受大陆手机号；2026-07 起 Claude 要 KYC | 海外手机号 + 真实证件 |
-| 付款 | 只收海外信用卡 | 公司统一开卡；个人可走 App Store 订阅 |
-| 封号 | 频繁切 IP、支付异常会被封 | 固定节点、固定设备、别共享账号 |
+| Region | Not offered to mainland China | Needs a proxy node; companies go through a cloud-hosted entry point like Bedrock / Vertex |
+| Registration | Doesn't accept mainland phone numbers; Claude has required KYC since 2026-07 | An overseas phone number + real ID |
+| Payment | Only accepts foreign credit cards | Company issues a shared card; individuals can go through an App Store subscription |
+| Bans | Frequent IP switching or payment anomalies get accounts banned | A fixed node, a fixed device, never share accounts |
 
-#### 主备双模怎么配
+#### How to Configure the Primary/Fallback Pair
 
-GLM 和 Kimi 都提供 Anthropic 兼容接口，意思是 Claude Code
-这个终端可以直接指过去，改两个环境变量的事。这是整个工作台里性价比最高的一个设计：终端层不变，模型层随时切。
+GLM and Kimi both offer Anthropic-compatible APIs, meaning the Claude Code
+terminal can point straight at them — just two environment variables. This is the single best cost-to-value design in the whole workbench: the terminal layer stays fixed, the model layer switches anytime.
 
-> # 主：Anthropic 官方
+> # Primary: Anthropic official
 >
 > wb-main() {
 >
@@ -400,7 +395,7 @@ GLM 和 Kimi 都提供 Anthropic 兼容接口，意思是 Claude Code
 >
 > }
 >
-> # 备：GLM 兼容接口，同一个 Claude Code 终端
+> # Fallback: GLM-compatible API, same Claude Code terminal
 >
 > wb-backup() {
 >
@@ -415,102 +410,102 @@ GLM 和 Kimi 都提供 Anthropic 兼容接口，意思是 Claude Code
 >
 > }
 >
-> # 探活：切换后先打一发，别在半个任务中间才发现挂了
+> # Health check: fire one off right after switching, don't find out it's down halfway through a task
 >
-> # 注意必须包含一次真实工具调用，只测对话查不出兼容层的问题
+> # Must include one real tool call — testing chat alone won't surface compatibility-layer issues
 >
 > wb-ping() {
 >
-> claude -p "用 Read 工具读 ./CLAUDE.md 第一行，只回这一行原文"
+> claude -p "Use the Read tool to read the first line of ./CLAUDE.md, reply with only that line verbatim"
 > --max-turns 3
 >
 > }
 
-密钥走系统钥匙串而不是明文写进 rc
-文件。工作区目录经常被打包带走，明文密钥跟着走出去是很现实的风险。
+Keys go through the system keychain, never written in plaintext into an rc
+file. Workspace directories get packaged up and carried around all the time — a plaintext key riding along with it is a very real risk.
 
-#### 兼容层的已知差异
+#### Known Differences in the Compatibility Layer
 
-这里值得多说两句根因，因为踩坑的时候知道根因能省很多时间。Anthropic 的
-Messages API 把工具调用表达成消息里的 tool_use / tool_result
-内容块，OpenAI 系是 function_call 那一套，两边的参数容器、ID
-关联方式、并行调用的表达都不一样。兼容接口做的是字段映射，简单调用映射得很干净，复杂的就未必。
+Worth spelling out the root cause here, because knowing it saves a lot of time when you hit these. Anthropic's
+Messages API expresses tool calls as tool_use / tool_result
+content blocks in the message; the OpenAI family uses the function_call approach — the parameter containers, ID
+correlation, and how parallel calls are expressed all differ between the two. What a compatible API does is field mapping — simple calls map cleanly, complex ones aren't guaranteed to.
 
-| **差异点** | **表现** | **对策** |
+| **Difference** | **Symptom** | **Countermeasure** |
 |----|----|----|
-| 工具调用格式 | 少数复杂嵌套参数的调用会被改写或丢字段 | 探活必须包含一次真实工具调用，而且最好是带嵌套参数的 |
-| 长上下文截断 | 接近窗口上限时可能静默截断而不报错 | 大文件一律走索引取片段，见 3.4 |
-| 流式中断 | 长任务跑一半断开，前面的 token 已经扣了 | 任务切小；结论即写台账，不要攒到最后 |
-| 模型别名漂移 | 同一别名指向的实际版本被悄悄换掉 | 固定具体版本号；每周探活时记一次实际返回的模型标识 |
+| Tool-call format | A small number of calls with complex nested parameters get rewritten or lose fields | The health check must include one real tool call, ideally one with nested parameters |
+| Long-context truncation | May silently truncate near the window limit instead of erroring | Large files always go through the index for excerpts, see 3.4 |
+| Streaming interruption | A long task disconnects partway through, and the tokens up to that point are already spent | Keep tasks small; write conclusions to the ledger immediately, don't save them up for the end |
+| Model alias drift | The actual version an alias points to gets quietly swapped | Pin a specific version number; log the actual model identifier returned at each weekly health check |
 
-#### 三套推荐配置
+#### Three Recommended Configurations
 
-| **方案** | **主力** | **备份** | **每月** |
+| **Setup** | **Primary** | **Fallback** | **Per month** |
 |----|----|----|----|
-| A · 有海外支付 | Claude Pro（\$20）或 Max 5x（\$100） | GLM Coding Plan Lite（¥118） | ¥260 – ¥830 |
-| B · 无海外支付 | GLM Coding Plan Pro（¥538） | DeepSeek V4 API | ¥590 左右 |
-| C · 先试水 | GLM Coding Plan Lite（¥118） | DeepSeek V4 API | ¥170 左右 |
+| A · Has overseas payment | Claude Pro (\$20) or Max 5x (\$100) | GLM Coding Plan Lite (¥118) | ¥260 – ¥830 |
+| B · No overseas payment | GLM Coding Plan Pro (¥538) | DeepSeek V4 API | ~¥590 |
+| C · Testing the waters | GLM Coding Plan Lite (¥118) | DeepSeek V4 API | ~¥170 |
 
-人民币按 1 美元 = 7.1 元折算。价格每月都在变，动手前核一遍官方定价页。
+RMB converted at 1 USD = 7.1 RMB. Prices change monthly — check the official pricing page before committing.
 
-| **选型之前先回答一个问题**　本次目标的代码、流量、日志是否允许出境。如果不允许，方案 A 直接出局，而且不存在"只把无关部分发出去"的折中——抓包产物里混入生产数据是常态，靠人工筛选不可靠。这种情况走方案 B，或者更进一步用本地部署的开源权重模型。 |
+| **Answer this one question before choosing a setup**　Is this target's code, traffic, and logs allowed to leave the country. If not, Setup A is immediately out, and there's no middle ground of "just send out the irrelevant parts" — production data bleeding into traffic-capture output is the norm, and manual filtering isn't reliable. In that case, go with Setup B, or further, use a locally-deployed open-weight model. |
 |----|
 
-### 3.1 目录骨架
+### 3.1 The Directory Skeleton
 
-可直接复制。新目标改配置不改流程，这是把一次性经验变成可复用资产的关键一步。
+Copy this directly. New targets change config, not process — that's the key step in turning one-off experience into a reusable asset.
 
 > workbench/
 >
-> ├── CLAUDE.md # L3 常驻 · 一页纸 · 红线写死在这
+> ├── CLAUDE.md # L3 standing content · one page · hard limits locked in here
 >
-> ├── .mcp.json # L5 MCP 服务器声明
+> ├── .mcp.json # L5 MCP server declarations
 >
-> ├── .env.example # 真 .env 不进版本库
+> ├── .env.example # the real .env never goes into version control
 >
 > │
 >
-> ├── memory/ # L4 跨目标复用 · 只进不退
+> ├── memory/ # L4 reused across targets · append-only
 >
-> │ ├── patterns.md # 漏洞模式：哪类地方容易坏
+> │ ├── patterns.md # vulnerability patterns: what kind of place tends to break
 >
-> │ ├── techniques.md # 技术手法：怎么测、怎么绕
+> │ ├── techniques.md # techniques: how to test, how to get around things
 >
-> │ └── tools.md # 工具与命令：环境怎么配、版本对应关系
+> │ └── tools.md # tools and commands: environment setup, version mappings
 >
 > │
 >
 > ├── targets/<slug>/
 >
-> │ ├── scope.md # 授权书摘要：白名单、时间窗、联系人
+> │ ├── scope.md # authorization summary: allowlist, time window, contact
 >
-> │ ├── threat-model.md # 一页威胁模型
+> │ ├── threat-model.md # one-page threat model
 >
-> │ ├── assets/ # 观测的结构化结果
+> │ ├── assets/ # structured results from observation
 >
-> │ │ ├── routes.md # 接口路由表
+> │ │ ├── routes.md # endpoint route table
 >
-> │ │ ├── identity.md # 身份字段：服务端下发 vs 客户端自报
+> │ │ ├── identity.md # identity fields: server-issued vs. client-self-reported
 >
-> │ │ └── invariants.md # 不变量清单，假设的来源
+> │ │ └── invariants.md # invariant checklist, the source of hypotheses
 >
 > │ ├── capture/
 >
-> │ │ ├── flows/ # 原始流
+> │ │ ├── flows/ # raw traffic
 >
-> │ │ └── index.jsonl # 结构化索引 —— AI 检索用这个
+> │ │ └── index.jsonl # structured index — this is what AI searches
 >
 > │ ├── decompiled/
 >
-> │ │ ├── INDEX.tsv # 文件清单 + 大小 + 首行
+> │ │ ├── INDEX.tsv # file listing + size + first line
 >
-> │ │ └── INDEX-keywords.md # 关键词热力，决定先读哪几个文件
+> │ │ └── INDEX-keywords.md # keyword heat map, decides which files to read first
 >
-> │ ├── journal/<date>.md # L6 按天流水
+> │ ├── journal/<date>.md # L6 daily log
 >
-> │ ├── tested.md # L6 假设矩阵 —— 防重复核心
+> │ ├── tested.md # L6 hypothesis matrix — the core anti-duplication mechanism
 >
-> │ ├── findings.md # L6 命中项 + 证据三件套
+> │ ├── findings.md # L6 hits + evidence three-piece set
 >
 > │ └── report/
 >
@@ -518,193 +513,195 @@ Messages API 把工具调用表达成消息里的 tool_use / tool_result
 >
 > └── tools/
 >
-> ├── mitm-addons/ # 落盘为结构化 jsonl
+> ├── mitm-addons/ # writes structured jsonl to disk
 >
-> ├── unpack/ # 小程序 / asar 解包
+> ├── unpack/ # mini-program / asar unpacking
 >
-> └── frida/ # hook 脚本库
+> └── frida/ # hook script library
 
-| **事项** | **规矩** |
+| **Item** | **Rule** |
 |----|----|
-| 进版本库 | CLAUDE.md、.mcp.json、memory/、tools/，以及各目标的 scope.md / threat-model.md / tested.md / findings.md |
-| 绝不进版本库 | .env、capture/flows/、decompiled/，以及任何含真实凭证或第三方 PII 的产物。.gitignore 第一天就写好 |
-| 新目标怎么起 | 复制 targets/_template/，填 scope.md，清空台账，记忆层原样继承 |
+| Goes into version control | CLAUDE.md, .mcp.json, memory/, tools/, and each target's scope.md / threat-model.md / tested.md / findings.md |
+| Never goes into version control | .env, capture/flows/, decompiled/, and any artifact containing real credentials or third-party PII. Write .gitignore on day one |
+| How to start a new target | Copy targets/_template/, fill in scope.md, clear the ledger, inherit the memory layer as-is |
 
-那两个 INDEX 文件值得单独点一句。capture/index.jsonl 和
+Those two INDEX files deserve a separate note. capture/index.jsonl and
 decompiled/INDEX-keywords.md
-不是原始数据，是为模型准备的检索入口。直接让它读 mitmproxy
-的二进制流或几千个反编译 Java
-文件，是上下文爆炸的头号原因。先建索引、再按需取片段，能把单次任务的
-token 降一个数量级。做法见 3.4。
+aren't raw data — they're a retrieval entry point prepared for the model. Having it read mitmproxy's
+binary stream directly, or thousands of decompiled Java
+files, is the number-one cause of context blowup. Build the index first, then pull excerpts on demand — that alone can cut a single task's
+token spend by an order of magnitude. See 3.4 for how.
 
-### 3.2 规则层：CLAUDE.md 怎么写
+### 3.2 Rules Layer: How to Write CLAUDE.md
 
-常驻的只放红线，方法放任务书。这样常驻部分才能稳定控制在一页以内。
+Only hard limits go in the standing content; methods go in the task brief. That's what keeps the standing portion reliably under one page.
 
-#### 必须写死的六条
+#### Six Things That Must Be Locked In
 
-**1. 目标白名单**　域名 / AppID /
-包名的明确列表，出列表禁止。不写这条，模型会顺手探旁站和关联域名。
+**1. Target allowlist**　An explicit list of
+domains / AppIDs /
+package names — anything off the list is forbidden. Skip this and the model will casually probe adjacent hosts and related domains.
 
 **2.
-只读优先**　下单、改密、删除、支付、发消息、催单，一切写操作默认禁止，需要显式豁免。
+Read-only by default**　Placing orders, changing passwords, deleting, paying, sending messages, nudging orders along — every write operation is forbidden by default and needs an explicit exemption.
 
-**3. 速率与批量上限**　每请求间隔 ≥ 1.2 秒、单批 ≤
-500、全程留日志。模型不懂刷太快会被封。
+**3. Rate and batch caps**　≥ 1.2 seconds between requests, ≤
+500 per batch, logged the whole way through. The model doesn't know that hammering too fast gets you banned.
 
-**4. 验证码类接口禁触发**　短信 / 邮件 /
-语音验证码一律禁止。对真人构成骚扰，性质上已经不是技术问题。
+**4. Never trigger verification-code endpoints**　SMS / email /
+voice verification codes are always forbidden. This harasses a real person — at that point it's not a technical question anymore.
 
-**5. 第三方数据验证性读取 ≤ 2
-条**　证明越权成立只需要一条记录。命中即停，报告内打码。
+**5. Verification reads of third-party data ≤ 2
+records**　Proving broken access control only needs one record. Stop on the first hit, redact in the report.
 
-**6. 凭证与 PII
-不落正文**　不进报告正文、不粘进对话、不进版本库、不传第三方模型。
+**6. Credentials and PII
+never land in the body text**　Not in the report body, not pasted into the conversation, not into version control, not sent to a third-party model.
 
-#### 措辞方式直接决定行为
+#### How You Phrase It Directly Determines the Behavior
 
-"注意不要误触写操作"是一条建议，模型会在它认为必要时权衡后越过。"所有写操作默认禁止，除非本任务书显式列出豁免端点"是一条规则，模型会当硬约束执行，并且在想做写操作时来问你。同一件事，前者的违规率明显高于后者。规则层的措辞不是文风问题。
+"Be careful not to accidentally trigger a write operation" is a suggestion — the model will weigh it and cross the line whenever it judges that necessary. "All write operations are forbidden by default unless this task brief explicitly lists an exempt endpoint" is a rule — the model treats it as a hard constraint and comes to ask you before attempting a write. Same underlying intent, but the violation rate for the former is noticeably higher than the latter. Wording in the rules layer isn't a matter of style.
 
-> # 授权范围
+> # Authorization scope
 >
-> 本工作区仅用于已书面授权的安全测试。授权书：targets/<slug>/scope.md
+> This workspace is for security testing with written authorization only. Authorization letter: targets/<slug>/scope.md
 >
-> 白名单以 scope.md
-> 为准；任何不在白名单内的主机、域名、AppID，禁止发起任何请求。
+> The allowlist in scope.md
+> is authoritative; any host, domain, or AppID not on the allowlist may not receive any request.
 >
-> # 红线（默认禁止，需任务书显式豁免）
+> # Hard limits (forbidden by default, needs explicit exemption in the task brief)
 >
-> 1\. 写操作：下单 / 支付 / 改密 / 删除 / 发消息 / 催单 / 提交表单 ——
-> 一律禁止
+> 1\. Write operations: placing orders / payment / password change / deletion / sending messages / nudging orders / form submission —
+> all forbidden
 >
-> 2\. 验证码类接口（短信 / 邮件 / 语音） —— 一律禁止触发
+> 2\. Verification-code endpoints (SMS / email / voice) — never trigger these
 >
-> 3\. 速率：请求间隔 >= 1.2s；单批 <= 500 次；超出须停下来问
+> 3\. Rate: >= 1.2s between requests; <= 500 per batch; stop and ask if exceeding this
 >
-> 4\. 第三方数据：验证性读取 <= 2 条，命中即停，报告内打码
+> 4\. Third-party data: verification reads <= 2 records, stop on first hit, redact in the report
 >
-> 5\. 凭证与 PII：不写入 findings.md 正文，不粘贴进对话，不出工作区
+> 5\. Credentials and PII: never written into findings.md body text, never pasted into the conversation, never leaves the workspace
 >
-> 6\. 破坏性动作：rm / drop / 批量写文件 —— 禁止
+> 6\. Destructive actions: rm / drop / bulk file writes — forbidden
 >
-> # 工作约定
+> # Working conventions
 >
-> - 开工前必读：targets/<slug>/tested.md，memory/patterns.md
+> - Required reading before starting: targets/<slug>/tested.md, memory/patterns.md
 >
-> - 结论即写：每验证完一个假设立刻追加 tested.md，不要攒到最后
+> - Write conclusions immediately: append to tested.md right after verifying each hypothesis, don't save it up for the end
 >
-> - 大文件不整读：先读 INDEX，再按需取片段（单次 <= 400 行）
+> - Never read large files whole: read the INDEX first, then pull excerpts on demand (<= 400 lines at a time)
 >
-> - 命中即停：证实一个假设后停止扩大，转人工复核
+> - Stop on a hit: once a hypothesis is confirmed, stop expanding and hand off to human review
 >
-> - 不确定是否越界时：停下来问，不要自行判断
+> - When unsure whether something crosses a line: stop and ask, don't decide on your own
 >
-> # 输出格式
+> # Output format
 >
-> - 假设结论写成：ID | 面 | 假设 | 状态 | 证据路径 | 日期
+> - Write hypothesis conclusions as: ID | Surface | Hypothesis | Status | Evidence path | Date
 >
-> - 命中项必须附证据三件套：原始请求 / 原始响应 / 复现步骤
+> - Every hit must include the evidence three-piece set: raw request / raw response / reproduction steps
 >
-> - 状态只能是 hit / miss / blocked 三者之一
+> - Status can only be one of hit / miss / blocked
 
-| **规则会失效，这一点要知道**　规则文件不是永久生效的。长会话后期，当上下文堆了几十轮工具结果之后，开头那份规则对当前注意力的影响会明显衰减。表现是：跑到第三小时，模型开始做第一小时绝不会做的事，比如探一个不在白名单的子域名。这是 1.6 里首尾位置效应的直接后果，不是模型变坏了。真正拦得住的是 3.4 那三层工具级护栏。 |
+| **Something worth knowing: rules stop working**　The rules file doesn't stay in effect forever. Late in a long session, once the context has piled up dozens of rounds of tool results, that opening rules block's pull on current attention noticeably fades. What this looks like: three hours in, the model starts doing things it absolutely wouldn't have done in hour one, like probing a subdomain that isn't on the allowlist. This is a direct consequence of the primacy/recency effect from 1.6 — the model hasn't "gone bad." What actually holds the line is the three-tier tool-level guardrails in 3.4. |
 |----|
 
-### 3.3 记忆层：知识怎么沉淀与召回
+### 3.3 Memory Layer: How Knowledge Gets Captured and Recalled
 
-这是长期价值的来源。第一个目标你只是在用工具，从第三个目标开始，你在用前两个目标的经验。
+This is where the long-term value comes from. On your first target you're just using the tools; starting from the third target, you're using the experience from the first two.
 
-| **文件** | **存什么** | **判断标准** |
+| **File** | **What it stores** | **Criterion** |
 |----|----|----|
-| patterns.md | 漏洞模式：哪类地方容易坏 | "这个结论换一个目标还成立吗"。成立才写 |
-| techniques.md | 技术手法：怎么测、怎么绕 | 可操作的动作序列。例：小程序自动化要先激活无障碍模式 |
-| tools.md | 工具与命令、版本对应关系 | 能直接粘贴执行的命令 + 已知坑。例：某版本微信对应哪个解包脚本 |
+| patterns.md | Vulnerability patterns: what kind of place tends to break | "Would this conclusion still hold on a different target?" Write it only if yes |
+| techniques.md | Techniques: how to test, how to get around things | An actionable sequence of steps. Example: mini-program automation needs accessibility mode activated first |
+| tools.md | Tools, commands, and version mappings | Commands you can paste and run directly + known gotchas. Example: which unpacking script a given WeChat version needs |
 
-#### 条目格式：带命中历史和反例
+#### Entry Format: With Hit History and Counter-Examples
 
-格式不是形式主义。命中历史让你知道这条模式的可信度，命中三次和命中一次权重不同。反例防止记忆层污染——一条被过度泛化的错误模式会误导后续所有项目，而且因为它写在记忆里、每次都被读，错误会被反复强化。
+The format isn't ceremony. Hit history tells you how trustworthy a pattern is — three hits and one hit carry different weight. Counter-examples guard against memory-layer contamination — an over-generalized bad pattern will mislead every subsequent project, and because it's written into memory and read every single time, the error keeps getting reinforced.
 
-> ## P-012 分发器信任请求体自报身份
+> ## P-012 Dispatcher Trusts a Self-Reported Identity in the Request Body
 >
-> 形态 网关 / 分发器把请求体里的 userId / userName 当可信身份，
+> Shape A gateway / dispatcher treats userId / userName in the request body as a trusted identity,
 >
-> 转发给下游时直接透传，下游不再复验。
+> and passes it straight through downstream without re-verification.
 >
-> 触发条件 微服务架构 + 网关统一鉴权 + 下游以"内网可信"为前提设计。
+> Trigger conditions Microservice architecture + gateway-centralized auth + downstream designed on the assumption that "internal network = trusted."
 >
-> 单体应用或下游独立校验的，不成立。
+> Doesn't hold for monoliths or downstream services that verify independently.
 >
-> 检测步骤 1) 从流量里找同时含 token 和自报身份字段的请求
+> Detection steps 1) Find requests in traffic that carry both a token and a self-reported identity field
 >
-> 2\) 保持 token 不变，只改自报字段
+> 2\) Keep the token unchanged, modify only the self-reported field
 >
-> 3\) 调一个返回用户私有数据的查询接口
+> 3\) Call a query endpoint that returns the user's private data
 >
-> 4\) 看返回是否为他人数据
+> 4\) Check whether the response contains someone else's data
 >
-> 命中历史 OTA-A（2026-08，高危） OTA-B（2026-09，高危）
+> Hit history OTA-A (2026-08, high severity) OTA-B (2026-09, high severity)
 >
-> 反例 金融类目标 F-1：网关用 HMAC 把 userId
-> 绑进签名，改字段签名即失效。
+> Counter-example Fintech target F-1: the gateway binds userId
+> into the signature with HMAC — modifying the field invalidates the signature.
 >
-> 凡是请求里带签名字段的，先逆签名算法，不要直接试改。
+> Whenever a request carries a signature field, reverse-engineer the signing algorithm first — don't just try modifying it directly.
 >
-> 优先级 高 —— 新目标若命中触发条件，建议排进前三个测试面
+> Priority High — if a new target hits the trigger conditions, recommend putting this in the first three test surfaces
 
-| **问题** | **做法** |
+| **Question** | **Practice** |
 |----|----|
-| 什么时候写 | 项目收尾时统一写，不在过程中随手写。过程中的判断还没经过复核，容易把误判写进长期记忆 |
-| 写什么 | 只写可迁移的。"这个目标的 /api/v2/order 有越权"不写；"这类分发器架构容易在 X 处失守"才写 |
-| 怎么召回 | 新目标开局第一件事，让模型读 patterns.md + threat-model.md，输出最可能命中的 5 条并排序 |
-| 怎么防污染 | 每季度回看一次。命中历史为 0 且超过三个项目未被验证的条目，降级或删除 |
+| When to write it | Write it all at once at project wrap-up, not casually during the work. Judgments made mid-process haven't been reviewed yet, and it's easy to write a false positive into long-term memory |
+| What to write | Only what's transferable. Not "this target's /api/v2/order has broken access control" — instead "this kind of dispatcher architecture tends to fail at X" |
+| How to recall it | The first thing at the start of a new target: have the model read patterns.md + threat-model.md and output the 5 most likely-to-hit patterns, ranked |
+| How to prevent contamination | Review quarterly. Entries with zero hit history and unverified across more than three projects get downgraded or deleted |
 
-> 读 memory/patterns.md 和 targets/<slug>/threat-model.md。
+> Read memory/patterns.md and targets/<slug>/threat-model.md.
 >
-> 基于这个目标的架构特征，从 patterns 里挑出最可能命中的 5 条，
+> Based on this target's architectural characteristics, pick the 5 patterns from patterns.md
 >
-> 按触发条件吻合度排序。每条给出：
+> most likely to hit, ranked by how well the trigger conditions match. For each one, give:
 >
-> - 模式编号与名称
+> - Pattern number and name
 >
-> - 为什么认为本目标吻合（指向 threat-model 里的具体依据）
+> - Why you think it matches this target (pointing to specific evidence in threat-model)
 >
-> - 在本目标上的第一个验证动作是什么
+> - What the first verification action on this target would be
 >
-> - 反例条件在本目标上是否成立（若成立，降级或排除）
+> - Whether the counter-example condition holds on this target (if it does, downgrade or exclude)
 >
-> 不要输出泛泛的安全建议，只输出这 5 条的排序和依据。
+> Don't output generic security advice — output only the ranking and rationale for these 5.
 
-这一步是冷启动从天级掉到小时级的直接原因。以 P-012 为例，在一个 OTA
-目标上成立之后，下一个同类目标直接把它排进前三个测试面，第一天就复现了同类问题。省掉的是原本需要一两天的摸架构、猜薄弱面。
+This step is the direct reason cold start drops from days to hours. Take P-012 as an example: once it was confirmed on one OTA
+target, the next similar target put it straight into the top three test surfaces and reproduced the same class of issue on day one. What that saves is the one-or-two days that would otherwise go into feeling out the architecture and guessing at weak points.
 
-第五部分那个 Electron 案例也进了记忆层，条目大意是"preload 全域注入 +
-外链应用内打开 = UXSS 可升级为 RCE"，触发条件写的是"Electron 客户端 +
-应用内浏览器 +
-有社交外链入口"。这条在后面两个桌面端目标上都被优先排查过，一次命中、一次否定——否定的那次同样有价值，它让我们把触发条件收窄了。
+The Electron case study in Part Five also went into the memory layer, as an entry roughly along the lines of "domain-wide preload injection +
+external links opened in-app = UXSS escalatable to RCE," with trigger conditions written as "Electron client +
+in-app browser +
+has a social-sharing external-link entry point." This entry got checked first on both of the next two desktop targets — one hit, one miss — and the miss was just as valuable, since it let us narrow the trigger conditions.
 
-### 3.4 能力层：MCP、索引策略、三层护栏
+### 3.4 Capability Layer: MCP, Indexing Strategy, Three-Tier Guardrails
 
-这一层决定模型有没有手。MCP
-把工具包装成模型可以直接调用的原子能力。没有它，模型只能写脚本给你、你去执行、再把结果贴回来，人是瓶颈，一轮循环几分钟。有了它，它自己调、自己看结果、自己决定下一步，一轮几秒钟。在"枚举
-200 个 handler 逐个验证"这类任务上，这是质变。
+This layer decides whether the model has hands. MCP
+wraps tools into atomic capabilities the model can call directly. Without it, the model can only write you a script, you run it, and paste the result back — a human is the bottleneck, and one loop takes minutes. With it, the model calls the tool itself, reads the result itself, decides the next step itself — one loop takes seconds. On tasks like "enumerate
+200 handlers and verify each one," that's a qualitative shift.
 
-#### MCP 到底是什么，以及它的隐性成本
+#### What MCP Actually Is, and Its Hidden Cost
 
-说穿了就是一个约定好的 JSON-RPC 2.0
-通道：终端（客户端）启动你声明的服务器进程，走 stdio 或 HTTP 通信，先
-initialize 握手，再 tools/list 把工具清单和每个工具的 JSON Schema
-拉回来，之后模型每次用工具就是一次 tools/call。服务器可以是二十行
-Python，也可以是一整个 Burp 扩展。
+Stripped down, it's just an agreed-upon JSON-RPC 2.0
+channel: the terminal (client) launches the server process you declared, communicates over stdio or HTTP, does an
+initialize handshake, then pulls the tool list and each tool's JSON Schema
+via tools/list — after that, every time the model uses a tool it's one
+tools/call. The server can be twenty lines of
+Python, or an entire Burp extension.
 
-要紧的是那份工具清单的位置——**它是常驻上下文的一部分**。每个工具的名字、描述、参数
-schema 加起来，少则几十 token，带复杂参数的能到两三百。装一个暴露 30
-多个工具的服务器，光工具定义就可能吃掉四到八千
-token，而且每一轮对话都在那儿占着。这就给了"该装哪些 MCP"一个定量判据：
+What matters is where that tool list sits — **it's part of the standing context**. Every tool's name, description, and parameter
+schema add up — a few dozen tokens at minimum, two or three hundred for ones with complex parameters. Install a server exposing 30-plus
+tools and the tool definitions alone can eat four to eight thousand
+tokens, sitting there occupying space in every single turn. That gives "which MCPs are worth installing" a quantifiable criterion:
 
-| 一个 MCP 服务器值不值得常驻，看它的工具定义 token 数除以它在本次任务里实际被调用的次数。三十个工具只用到两个的服务器，不如换成一个薄封装，或者干脆用 Bash 调命令行。第六部分那个 jadx-mcp-server 暴露三十多个工具，我们的实际做法是只在做 APP 目标时才挂上它，Web 目标的配置里没有它。 |
+| Whether an MCP server is worth keeping resident comes down to its tool-definition token count divided by how many times it's actually called in this task. A server with thirty tools where only two get used is better replaced with a thin wrapper, or just called via Bash on the command line. The jadx-mcp-server in Part Six exposes thirty-plus tools; what we actually do is only mount it when working an APP target — it's absent from the Web-target configuration. |
 |----|
 
-与形态无关的最小配置只有两个服务器：
+The minimal form-factor-agnostic configuration has just two servers:
 
 > {
 >
@@ -734,22 +731,22 @@ token，而且每一轮对话都在那儿占着。这就给了"该装哪些 MCP"
 >
 > }
 
-一个查抓包索引，一个查代码，都只返回片段不返回全量。形态专用的
-MCP（浏览器、jadx、Frida 等）在第四到第六部分分别给出。
+One queries the traffic-capture index, the other queries code — both return only excerpts, never the whole thing. Form-factor-specific
+MCPs (browser, jadx, Frida, etc.) are given separately in Parts Four through Six.
 
-#### 三层 scope 护栏
+#### Three-Tier Scope Guardrails
 
-1.4
-说过，边界靠提示词守不住。能在工具层拦的就别只写进规则文件。授权范围应该同时落在三个地方，任何一层单独失效都还有兜底：
+Section 1.4
+already said boundaries can't be held by a prompt alone. Whatever can be blocked at the tool level shouldn't be left only in the rules file. Authorization scope should land in three places at once, so that any one layer failing alone still leaves a backstop:
 
-| **层** | **落点** | **拦住什么** |
+| **Layer** | **Where it lives** | **What it blocks** |
 |----|----|----|
-| 第 0 层 · 提示词 | CLAUDE.md 白名单 + 任务书重申 | 长会话后会衰减，是提醒不是防线 |
-| 第 1 层 · 客户端 | 浏览器 --allowedUrlPattern / --blockedUrlPattern | 范围外的导航与子资源根本发不出去 |
-| 第 2 层 · 代理规则 | mitmproxy allow_hosts 正则 + addon 落盘白名单 | 范围外流量不落盘，从源头断掉数据混入 |
-| 第 3 层 · 出站硬断 | server_connect 钩子里设 data.server.error | 连接直接被杀，不依赖任何上层配置 |
+| Layer 0 · Prompt | CLAUDE.md allowlist + restated in the task brief | Decays over a long session — a reminder, not a defense line |
+| Layer 1 · Client | Browser --allowedUrlPattern / --blockedUrlPattern | Navigation and sub-resources outside scope simply can't be sent |
+| Layer 2 · Proxy rules | mitmproxy allow_hosts regex + addon write-to-disk allowlist | Out-of-scope traffic never touches disk, cutting off data contamination at the source |
+| Layer 3 · Hard outbound cutoff | Set data.server.error in the server_connect hook | The connection is killed outright, independent of any upper-layer config |
 
-> # 第 2 层：只处理白名单主机，其余直接放行不落盘
+> # Layer 2: only process allowlisted hosts, let everything else through without writing to disk
 >
 > mitmdump --listen-port 8080 \\
 >
@@ -761,7 +758,7 @@ MCP（浏览器、jadx、Frida 等）在第四到第六部分分别给出。
 >
 > -s ./tools/mitm-addons/index_dump.py
 >
-> # 第 3 层：出站硬断，写进 addon
+> # Layer 3: hard outbound cutoff, written into an addon
 >
 > from mitmproxy import ctx
 >
@@ -771,22 +768,22 @@ MCP（浏览器、jadx、Frida 等）在第四到第六部分分别给出。
 >
 > if data.server.address[0] not in SCOPE:
 >
-> data.server.error = "out of scope" # 连接直接被杀
+> data.server.error = "out of scope" # connection killed outright
 >
 > ctx.log.warn(f"BLOCKED {data.server.address[0]}")
 
-第 3
-层是兜底，它拦的是"配置写错了"和"模型绕过了上层"这两种情况。实际跑起来它触发得不多，但触发的那几次都是真事故——有一次是我们自己在
-allow_hosts 正则里漏了转义，. 匹配到了别的域名，第 3 层把它挡下来了。
+Layer 3
+is the backstop — it catches "the config was written wrong" and "the model got around the upper layers." In practice it doesn't fire often, but every time it has, it's been a real incident — once we ourselves missed an escape character in the
+allow_hosts regex, the . matched an unrelated domain, and Layer 3 caught it.
 
-#### 抓包落盘要结构化
+#### Traffic-Capture Output Has to Be Structured
 
-装 CA、配代理是基础操作。真正影响效率的是落盘格式。直接让模型读
-mitmproxy 的 flow
-文件是灾难：二进制、体量大、一次读进去上下文就满了。正确做法是用 addon
-在抓包时就把每条流压成一行 JSON，模型用检索的方式去查。
+Installing the CA cert and configuring the proxy are the basics. What actually affects efficiency is the on-disk format. Having the model read
+mitmproxy's flow
+files directly is a disaster: binary, huge, and a single read fills up the context. The right approach is to use an
+addon to compress each flow into one line of JSON as it's captured, so the model queries it like a search index.
 
-> # tools/mitm-addons/index_dump.py 要点
+> # Key points from tools/mitm-addons/index_dump.py
 >
 > import json, hashlib, pathlib
 >
@@ -802,7 +799,7 @@ mitmproxy 的 flow
 >
 > if flow.request.pretty_host not in SCOPE:
 >
-> return # 范围外不落盘
+> return # out of scope, don't write to disk
 >
 > body = flow.request.get_text(strict=False) or ""
 >
@@ -816,7 +813,7 @@ mitmproxy 的 flow
 >
 > "path": flow.request.path.split("?")[0],
 >
-> # 参数只留 key，value 不落盘，避免 PII 进索引
+> # keep only param keys, not values, so PII never enters the index
 >
 > "q_keys": sorted(flow.request.query.keys()),
 >
@@ -824,7 +821,7 @@ mitmproxy 的 flow
 >
 > if body.startswith("{") else [],
 >
-> # 凭证只留指纹，用于判断是否同一身份，不留原文
+> # keep only a fingerprint of credentials, for identity comparison, never the raw value
 >
 > "auth_fp": {h: hashlib.sha256(
 >
@@ -836,7 +833,7 @@ mitmproxy 的 flow
 >
 > "len": len(flow.response.content or b""),
 >
-> # 原始流单独存，索引里只给路径，需要时才取
+> # raw flow stored separately; the index only gives the path, fetched only when needed
 >
 > "raw": f"flows/{flow.id}.raw",
 >
@@ -844,39 +841,38 @@ mitmproxy 的 flow
 >
 > OUT.write(json.dumps(rec, ensure_ascii=False) + "\n"); OUT.flush()
 
-三个设计要点，每一个都对应一类真实事故：
+Three design points, each corresponding to a class of real incident:
 
-**▪ 白名单在落盘时生效。**
-范围外的流量根本不落盘，从源头杜绝"测试数据里混进无关目标"这个合规问题。
+**▪ The allowlist takes effect at write time.**
+Out-of-scope traffic never touches disk at all — this shuts down the compliance problem of "unrelated target data leaking into test data" at the source.
 
-**▪ 参数只留 key 不留 value。**
-模型要的是"这个接口收哪些字段"，不是字段的值。值里混着手机号、身份证、订单号，不落盘就不会泄露。
+**▪ Parameters keep only the key, never the value.**
+What the model needs is "which fields does this endpoint accept," not the field values. Values often carry phone numbers, ID numbers, order numbers — not writing them to disk means they can't leak.
 
-**▪ 凭证留指纹不留原文。**
-判断"这两个请求是不是同一身份发的"只需要指纹相等，不需要看到 token
-本身。
+**▪ Credentials keep a fingerprint, never the raw value.**
+Determining "were these two requests sent by the same identity" only needs matching fingerprints — you never need to see the
+token itself.
 
-#### 索引策略
+#### Indexing Strategy
 
-这一条是能力层最重要的实践，也是最容易被跳过的。反编译一个中型 APP
-会出几千个 Java 文件、几百 MB；解包一个小程序会出几百个 JS
-文件。整份喂进去，上下文瞬间爆掉，而且模型会淹没在无关代码里。
+This is the single most important practice in the capability layer, and the easiest one to skip. Decompiling a mid-sized APP
+produces thousands of Java files, hundreds of MB; unpacking a mini-program produces hundreds of JS
+files. Feed the whole thing in and the context blows up instantly, and the model drowns in irrelevant code besides.
 
-算一笔账就明白了。一条抓包索引记录压成 JSON 大约 150 到 250
-token，一千条流量就是二十万 token
-上下——整读一次索引就把窗口占满了，更别说原始流。反编译产物更夸张：一个中型
-APP 出来的 Java 源码通常在千万 token
-量级，比任何模型的窗口都大三个数量级。所以这里没有"塞进去"这个选项，只有"检索"这一个选项。
+Do the math and it's obvious why. One traffic-capture index record compressed to JSON runs about 150 to 250
+tokens; a thousand requests is on the order of two hundred thousand
+tokens — reading the index in full just once fills the window, never mind the raw flows. Decompiled output is even more extreme: the Java source from a mid-sized
+APP typically runs into the tens of millions of tokens
+— three orders of magnitude bigger than any model's context window. So "just feed it in" was never an option here — the only option is retrieval.
 
-**▪ 先建索引，让模型看目录。**
-生成文件路径、大小、包名、首若干行摘要，以及关键词命中统计。这份索引通常只有几百行，几千
-token。
+**▪ Build the index first, let the model see the directory.**
+Generate file paths, sizes, package names, a summary of the first several lines, and keyword hit counts. This index is usually only a few hundred lines, a few thousand
+tokens.
 
-**▪ 让模型自己决定读哪个，按片段取。** 它读完索引后说"我要看
-com/x/net/SignUtil.java 的 40 到 120
-行"，检索工具只返回这一段。单次任务的 token 能降一个数量级。
+**▪ Let the model decide what to read, pulled by excerpt.** After reading the index it says "I want to see lines 40 to 120 of
+com/x/net/SignUtil.java," and the retrieval tool returns just that slice. This alone can drop a single task's token spend by an order of magnitude.
 
-> # 文件清单 + 大小 + 首行
+> # File listing + size + first line
 >
 > fd -e java . decompiled/ -x sh -c \\
 >
@@ -885,7 +881,7 @@ com/x/net/SignUtil.java 的 40 到 120
 >
 > > decompiled/INDEX.tsv
 >
-> # 关键词热力：决定先看哪几个文件
+> # Keyword heat map: decides which files to look at first
 >
 > for kw in http encrypt sign token secret exported WebView \\
 >
@@ -895,201 +891,201 @@ com/x/net/SignUtil.java 的 40 到 120
 >
 > done > decompiled/INDEX-keywords.md
 
-关键词热力这一步别小看，实战中不止一次靠 INDEX-keywords.md 里"某类关键词命中数明显多于 manifest 里声明的路由数"这种异常热力，直接定位到隐藏路由。
+Don't underestimate this keyword heat-map step — in the field, an anomaly in INDEX-keywords.md like "this keyword's hit count is noticeably higher than the number of routes declared in the manifest" has more than once led straight to a hidden route.
 
-### 3.5 台账层：假设矩阵
+### 3.5 Ledger Layer: The Hypothesis Matrix
 
-最容易被当成文档工作而跳过的一步，实际上是省钱第一手段。我们一个目标累计
-88 个测试节点，其中约六成是否定结果。
+The step most likely to get dismissed as paperwork and skipped, when it's actually the single biggest money-saver. On one target we accumulated
+88 test nodes, of which about 60% were disproven.
 
-| **文件** | **粒度** | **作用** |
+| **File** | **Granularity** | **Role** |
 |----|----|----|
-| journal/<date>.md | 按天流水，一个动作一行 | 给人看的过程记录。出问题时回溯那天干了什么，也是审计材料 |
-| tested.md | 按假设，一个假设一行 | 给模型看的。新会话开局必读，直接决定这一轮不重复测什么 |
-| findings.md | 按命中项 | 定级、复现步骤、证据三件套。报告的直接来源 |
+| journal/<date>.md | Daily log, one line per action | A human-readable process record. For tracing back what happened on a given day, and also audit material |
+| tested.md | By hypothesis, one line per hypothesis | For the model to read. Required reading at the start of every new session — directly determines what this round skips retesting |
+| findings.md | By hit | Severity, reproduction steps, evidence three-piece set. The direct source for the report |
 
-格式必须是固定列的表，不能是自由散文。模型要能可靠地解析它、追加它、按状态过滤它。
+The format has to be a fixed-column table, not free prose. The model needs to be able to reliably parse it, append to it, and filter it by status.
 
-> | ID | 面 | 假设 | 状态 | 证据 | 日期 |
+> | ID | Surface | Hypothesis | Status | Evidence | Date |
 >
 > |-------|-----------|---------------------------------|----------|------------------|-------|
 >
-> | H-001 | 订单查询 | orderId 可遍历，无归属校验 | hit | ev/H-001/
+> | H-001 | Order query | orderId is enumerable, no ownership check | hit | ev/H-001/
 > | 09-12 |
 >
-> | H-002 | 订单查询 | 改 userId 自报字段可越权 | miss |
-> 网关签名绑定 | 09-12 |
+> | H-002 | Order query | Modifying the self-reported userId field enables broken access control | miss |
+> gateway signature binding | 09-12 |
 >
-> | H-003 | 分发器 | 下游不复验网关身份 | hit | ev/H-003/ | 09-13
+> | H-003 | Dispatcher | Downstream doesn't re-verify the gateway's identity | hit | ev/H-003/ | 09-13
 > |
 >
-> | H-004 | 文件上传 | 扩展名校验可绕（大小写/双扩展） | miss |
-> 服务端白名单 | 09-13 |
+> | H-004 | File upload | Extension check bypassable (case / double extension) | miss |
+> server-side allowlist | 09-13 |
 >
-> | H-005 | 文件上传 | 上传路径可穿越 | blocked | WAF 拦截，未穿透
+> | H-005 | File upload | Upload path traversal | blocked | blocked by WAF, not penetrated
 > | 09-13 |
 >
-> | H-006 | 用户中心 | 头像 URL 可 SSRF | miss | 仅取白名单域 |
+> | H-006 | User center | Avatar URL SSRF | miss | only accepts allowlisted domains |
 > 09-14 |
 
-| **规矩** | **说明** |
+| **Rule** | **Explanation** |
 |----|----|
-| 状态只能三选一 | hit 命中 · miss 已测且否定 · blocked 测了但被拦或无法判定。不允许"待定"，待定的留在 journal 里 |
-| miss 必须写原因 | "网关签名绑定"这四个字比"未发现问题"有用十倍。它告诉下一轮这条路被签名堵死了，先逆签名再说 |
-| 怎么强制读 | 三处：CLAUDE.md 写"开工前必读"覆盖主控；任务书嵌入已否定清单覆盖子 agent；新一轮开局让模型先说出"本轮不测什么" |
+| Status must be one of exactly three | hit confirmed · miss tested and disproven · blocked tested but blocked or undecidable. "Pending" is not allowed — pending items stay in journal |
+| A miss must state a reason | "gateway signature binding" is ten times more useful than "no issue found." It tells the next round this path is blocked by a signature — reverse the signing algorithm first |
+| How to force it to be read | Three places: CLAUDE.md says "required reading before starting" to cover the main controller; the task brief embeds the disproven-hypothesis list to cover sub-agents; at the start of a new round, have the model state up front "what this round will not test" |
 
-| **否定结论不是垃圾**　哪个面测过、为什么不通，这些记录有双重价值：既是防重复的账本，也是报告里"该做的都做了"的覆盖度证明。客户问"你们测没测 SSRF"，你能直接指着 H-006 说测了、结论是什么、哪天测的。那六成否定结果让后续每一轮都省掉了重复投入，第二轮起成本降一半主要就来自这里。 |
+| **A disproven conclusion isn't garbage**　Which surface was tested and why it didn't pan out — these records carry double value: they're both an anti-duplication ledger and proof of coverage for the report's "everything that should have been done, was." When a client asks "did you test for SSRF," you can point straight at H-006 and say yes, here's the conclusion, here's the date. That 60% of disproven results is what saves every subsequent round from repeated effort — it's the main source of the roughly 50% cost drop starting from round two. |
 |----|
 
-### 3.6 并行子 agent
+### 3.6 Parallel Sub-Agents
 
-单线程跑测试浪费了智能体八成的价值。但并行的收益上限不由本地算力决定，由目标侧风控决定。
+Running tests single-threaded wastes 80% of an agent's value. But the ceiling on parallelism's payoff isn't set by local compute — it's set by the target's rate limiting.
 
-主控负责判断和整合：读台账、选面、拆任务、复核结论、决定停或继续。子
-agent 负责执行：在一个窄范围里枚举、验证、回报。每个子 agent
-有独立上下文和独立请求预算，用完即弃。
+The main controller handles judgment and integration: reading the ledger, choosing surfaces, splitting up tasks, reviewing conclusions, deciding whether to stop or continue. Sub-
+agents handle execution: enumerating, verifying, and reporting within a narrow scope. Each sub-agent
+has its own context and its own request budget, and gets discarded once it's used up.
 
-上下文隔离才是并行的主要价值，比"同时跑得更快"重要得多。主控会话如果自己去枚举
-200 个
-handler，工具返回会把上下文撑爆，到后面它已经不记得自己在找什么了——这就是"AI
-开始失忆"的典型成因。换成子 agent，那几万 token 的探索垃圾留在子 agent
-的上下文里，回到主控的只有一张几百 token
-的结论表。主控的上下文因此能一直保持清醒，跑一整天也不迷路。
+Context isolation is the real value of parallelism — far more important than "runs faster at the same time." If the main controller session enumerates
+200
+handlers itself, the tool results will blow out its context, and eventually it won't even remember what it was looking for anymore — that's the classic cause of "AI
+starts forgetting." Swap in sub-agents instead, and those tens of thousands of tokens of exploration junk stay in the sub-agent's
+context; all that comes back to the main controller is a conclusion table a few hundred tokens
+long. The main controller's context stays clear the whole time as a result, and it can run for a full day without losing the thread.
 
-#### 任务书的四个要素
+#### Four Elements of a Task Brief
 
-| **要素** | **要求** |
+| **Element** | **Requirement** |
 |----|----|
-| ① 精确目标 | 到端点或文件级别。不是"检查订单模块"，是"检查 /api/v3/order/detail 及其 6 个同族端点" |
-| ② 步骤 | 动作序列，包括用哪个工具、按什么顺序。不要让子 agent 自己发挥方法 |
-| ③ 命中判据 | 什么算命中，写成可判定的条件。并写死命中即停，不要让它证实之后继续扩大 |
-| ④ 请求上限 | 硬预算。用完必须停下来回报，不允许自行追加 |
+| ① Precise target | Down to the endpoint or file level. Not "check the order module," but "check /api/v3/order/detail and its 6 sibling endpoints" |
+| ② Steps | A sequence of actions, including which tool to use and in what order. Don't let the sub-agent improvise its own method |
+| ③ Hit criteria | What counts as a hit, written as a decidable condition. And lock in stop-on-hit — don't let it keep expanding after confirming one |
+| ④ Request cap | A hard budget. Once used up, it must stop and report back — no self-granted extensions |
 
-> ## 目标
+> ## Goal
 >
-> targets/<slug>/assets/routes.md 中标记为 [order-family] 的 6
-> 个端点。
+> The 6
+> endpoints marked [order-family] in targets/<slug>/assets/routes.md.
 >
-> 只测这 6 个，不得扩展到任何其他端点。
+> Test only these 6 — do not expand to any other endpoint.
 >
-> ## 红线（本任务适用，不得违反）
+> ## Hard limits (apply to this task, must not be violated)
 >
-> - 只读。禁止任何写操作，包括但不限于下单、取消、修改
+> - Read-only. Any write operation is forbidden, including but not limited to placing, canceling, or modifying orders
 >
-> - 请求间隔 >= 1.2s，本任务请求上限 120 次，用完即停
+> - Request interval >= 1.2s, this task's request cap is 120, stop once used up
 >
-> - 第三方数据命中后立即停止，最多读取 2 条
+> - Stop immediately on a third-party-data hit, read at most 2 records
 >
-> ## 已否定，不要重复测
+> ## Already disproven, do not retest
 >
-> - H-002 改 userId 自报字段（网关签名绑定，改即失效）
+> - H-002 modifying the self-reported userId field (gateway signature binding, modification invalidates it)
 >
-> - H-004 上传扩展名绕过（服务端白名单）
+> - H-004 upload-extension bypass (server-side allowlist)
 >
-> ## 步骤
+> ## Steps
 >
-> 1\. 用 capture-query 取这 6 个端点的真实请求模板
+> 1\. Use capture-query to pull the real request templates for these 6 endpoints
 >
-> 2\. 对每个端点，列出所有客户端可控的参数（对照 assets/identity.md）
+> 2\. For each endpoint, list every client-controllable parameter (cross-reference assets/identity.md)
 >
-> 3\. 对每个可控参数，构造一次"改为他人可能值"的请求
+> 3\. For each controllable parameter, construct one request that "changes it to a value belonging to someone else"
 >
-> 4\. 比对响应：状态码、长度、是否含他人标识字段
+> 4\. Compare responses: status code, length, whether it contains another user's identifying fields
 >
-> ## 命中判据
+> ## Hit criteria
 >
-> 响应中出现不属于当前测试账号的业务标识（订单号 / 手机号 /
-> 姓名）即为命中。
+> A hit is any response containing a business identifier (order number / phone number /
+> name) that doesn't belong to the current test account.
 >
-> 命中后立即停止本任务，回报以下内容，不要继续测剩余端点。
+> Stop this task immediately on a hit and report the following — do not continue testing the remaining endpoints.
 >
-> ## 回报格式
+> ## Report format
 >
-> | 端点 | 参数 | 结论 hit/miss/blocked | 证据文件 | 已用请求数 |
+> | Endpoint | Parameter | Conclusion hit/miss/blocked | Evidence file | Requests used |
 >
-> 外加一段 100 字以内的判断说明。不要给安全建议，不要给修复方案。
+> Plus a judgment summary of 100 words or fewer. No security advice, no remediation suggestions.
 
-#### 分片原则
+#### Slicing Principles
 
 **▪**
-按业务线切（火车一个、酒店一个）或按攻击面切（分发器一个、存储类一个）。两种切法不要混用，混用会出现同一个端点被两个分片覆盖。
+Slice by business line (one for trains, one for hotels) or by attack surface (one for the dispatcher, one for storage). Don't mix the two approaches — mixing them causes the same endpoint to end up covered by two slices.
 
 **▪**
-分片之间不能有重叠端点。同端点并发会互相踩响应，两边都拿到污染数据、得出错误结论，同时更容易触发风控。派发前把各分片的端点列表求交集，非空就拒绝派发——这一步可以脚本化，十行代码的事。
+Slices must not have overlapping endpoints. Concurrent testing of the same endpoint causes the responses to trample each other — both sides get contaminated data and draw wrong conclusions, and it's also more likely to trip rate limiting. Before dispatching, intersect the endpoint lists across slices — if the intersection isn't empty, refuse to dispatch. This step can be scripted; it's a ten-line-of-code thing.
 
-**▪** 并发度受目标侧限制，经验值 3 到 5
-路。判据是全局请求速率是否仍在红线内：5 个子 agent 各自守 1.2
-秒间隔，合起来就是 4
-请求每秒，很可能已经超了目标能容忍的阈值。**速率红线按全局算，不是按单个
-agent 算**，这一条我们靠一次封 IP 才记住。
+**▪** Concurrency is limited by the target side — 3 to 5
+concurrent sub-agents in practice. The test is whether the global request rate is still within the hard limit: 5 sub-agents each holding a 1.2
+-second interval add up to 4
+requests per second combined, which is quite likely to already exceed what the target can tolerate. **The rate limit is calculated globally, not per
+agent** — we only remember this rule because we got an IP banned learning it.
 
-#### 两个必须防住的失败模式
+#### Two Failure Modes You Must Guard Against
 
-| **子 agent 的结论不能直接采信。** 它会幻觉出复现不了的命中。主控必须拿着证据三件套独立复核每一条 hit，复核不过的降级为 miss 并记录原因。子 agent 的回报是线索，不是结论，这条没有例外。 |
+| **A sub-agent's conclusion can't be trusted at face value.** It will hallucinate hits that don't reproduce. The main controller must independently review every hit with its evidence three-piece set, and downgrade anything that doesn't hold up to miss, with the reason recorded. A sub-agent's report is a lead, not a conclusion — no exceptions to this. |
 |----|
 
-| **子 agent 读不到主控的规则文件。** 它有独立上下文，CLAUDE.md 不会自动带过去。所有红线必须抄进任务书——模板里把红线放在第二段就是为了这个。这是整套流程里最容易出合规事故的地方。 |
+| **A sub-agent can't see the main controller's rules file.** It has its own independent context — CLAUDE.md doesn't automatically carry over. Every hard limit has to be copied into the task brief — that's exactly why the template puts hard limits in the second section. This is the single easiest place in the whole pipeline for a compliance incident to happen. |
 |----|
 
-### 3.7 验收清单
+### 3.7 Acceptance Checklist
 
-搭完不要直接上真实目标。先逐条验，每一条都是一个可观测的行为，不是"装好了没有"。
+Don't take this straight to a real target once it's built. Verify item by item first — each one is an observable behavior, not just "is it installed."
 
 **1.**
-主备模型各跑通一次真实工具调用。不是对话通了就算，要让它实际调用一次
-Read 或 MCP 工具并返回正确结果。兼容层的坑几乎都出在工具调用上。
+Get both the primary and fallback model to complete one real tool call each. Not just "the chat works" — make it actually call
+Read or an MCP tool and get a correct result back. Almost every compatibility-layer pitfall shows up in tool calls.
 
 **2.**
-新会话里让模型复述红线。问"本工作区禁止哪些操作"，它应该能准确列出六条。列不全说明规则文件没被读进去，或者写得太长被稀释了。
+In a new session, have the model recite the hard limits. Ask "what operations are forbidden in this workspace," and it should list all six accurately. An incomplete list means the rules file either isn't being read, or it's too long and got diluted.
 
 **3.**
-代理能抓到目标明文，且白名单生效。访问一个非目标站点，检查它没有落盘。
+The proxy can capture the target's traffic in cleartext, and the allowlist works. Visit a non-target site and check that it wasn't written to disk.
 
 **4.**
-三层护栏各验一次。让模型去访问一个范围外域名，确认它在客户端层就被拦住；关掉第
-1 层再试一次，确认第 2、3 层能兜住。
+Verify all three guardrail tiers individually. Have the model try to visit an out-of-scope domain and confirm it's blocked at the client layer; disable Layer
+1 and try again, confirming Layers 2 and 3 catch it.
 
 **5.**
-模型能从索引里检索出指定接口。给它一个接口名，让它返回请求模板和参数列表。这验证的是索引可用性，不是抓包可用性。
+The model can retrieve a specified endpoint from the index. Give it an endpoint name and have it return the request template and parameter list. This verifies index usability, not traffic-capture usability.
 
-**6.** 模型能读 memory 并输出模式预测。用 3.3
-的冷启动提示词，看它能否给出 5
-条排序和依据。空泛的输出说明记忆层条目写得不够具体。
+**6.** The model can read memory and output a pattern prediction. Use the cold-start prompt from 3.3
+and see whether it can produce 5
+ranked patterns with rationale. A vague output means the memory-layer entries aren't specific enough.
 
-**7.** 一次子 agent
-派发能回收结构化结论。派一个最小任务，检查回报是否符合任务书要求的表格格式、是否守住了请求上限。
+**7.** One sub-agent
+dispatch can retrieve a structured conclusion. Dispatch a minimal task and check whether the report matches the table format the task brief required, and whether it respected the request cap.
 
-**8. 台账能影响行为。** 在 tested.md 里塞一条假的 miss
-记录，让模型规划下一轮，它应该主动说"H-00X 已否定，本轮跳过"。
+**8. The ledger actually influences behavior.** Plant a fake miss
+record in tested.md and have the model plan the next round — it should proactively say "H-00X already disproven, skipping this round."
 
-**9.** 大文件不被整读。给一个 5000
-行的文件，看它是先读索引还是直接整读。
+**9.** Large files don't get read whole. Give it a 5,000
+-line file and see whether it reads the index first or just reads the whole thing.
 
-第 8
-条最重要。其余各条验证的是零件装好了，只有这一条验证回路接通了。台账写了但没被读，机制就是开环的，前面所有投入都收不回来。
+Item 8
+is the most important. Every other item verifies that a part is installed; only this one verifies the loop is actually closed. If the ledger gets written but never read, the mechanism is open-loop, and none of the earlier investment pays off.
 
-## 第四部分：Web 端
+## Part Four: Web
 
 
 ------------------------------------------------------------------------
 
-三种形态里最好下手的。浏览器本身就是最好的调试器，工具链最成熟，模型的接入点也最多。核心思路是让它自己驾驶浏览器：自己点、自己填、自己读结果、自己判断，人只在最后复核证据。
+The easiest of the three form factors to work with. The browser is itself the best debugger, the tooling is the most mature, and the model has the most entry points. The core idea is to let it drive the browser itself: click, fill in fields, read results, and judge for itself — a human only reviews the evidence at the end.
 
-| **小节** | **讲什么**                               |
+| **Section** | **What it covers**                               |
 |----------|------------------------------------------|
-| 4.1      | Chrome DevTools MCP 能做什么、不能做什么 |
-| 4.2      | 改包这一半交给谁                         |
-| 4.3      | 前端 JS 白盒：把压缩代码变成两张表       |
-| 4.4      | 一条完整的越权验证链路                   |
-| 4.5      | 确定性验证：别让模型自己判断有没有漏洞   |
-| 4.6      | 优缺点与 Web 端特有红线                  |
+| 4.1      | What Chrome DevTools MCP can and can't do |
+| 4.2      | Who handles the modify-the-packet half                         |
+| 4.3      | Frontend JS white-box: turning minified code into two tables       |
+| 4.4      | One complete broken-access-control verification chain                   |
+| 4.5      | Deterministic verification: don't let the model judge whether there's a vulnerability on its own   |
+| 4.6      | Trade-offs and hard limits specific to Web                  |
 
 ### 4.1 Chrome DevTools MCP
 
-Google 官方出的 MCP 服务器，底层用 Puppeteer 驱动 Chrome、用 DevTools
-前端做分析，通信走
-CDP。它的设计原则里有两条对安全测试很关键：返回语义摘要而不是原始数据流，重资产（截图、trace）返回文件路径而不是内容。这意味着它天然不是一个"把完整
-HTTP 报文喂给你"的工具。
+The official MCP server from Google, driving Chrome under the hood with Puppeteer, doing analysis with the DevTools
+frontend, communicating over
+CDP. Two of its design principles matter a lot for security testing: it returns semantic summaries rather than raw data streams, and heavy assets (screenshots, traces) come back as file paths rather than content. That means it's not natively a "hand you the complete
+HTTP message" kind of tool.
 
 > {
 >
@@ -1121,342 +1117,339 @@ HTTP 报文喂给你"的工具。
 >
 > }
 
-一行装的版本是 claude mcp add chrome-devtools --scope user npx
-chrome-devtools-mcp@latest，但授权测试建议用上面这份带参数的，原因见本节末尾的默认行为清单。
+The one-line install is claude mcp add chrome-devtools --scope user npx
+chrome-devtools-mcp@latest, but for authorized testing, use the parameterized version above — see the list of default behaviors at the end of this section for why.
 
-#### 常用工具
+#### Commonly Used Tools
 
-| **工具** | **作用** | **在测试里用来干什么** |
+| **Tool** | **What it does** | **What it's used for in testing** |
 |----|----|----|
-| take_snapshot | 拿页面无障碍树，带元素 UID | 确认当前状态、定位元素。后续 click / fill 都引用这里的 UID |
-| evaluate_script | 在页面上下文执行 JS 函数 | 读 localStorage / sessionStorage 里的身份字段、调页面内的封装函数 |
-| list_network_requests | 列本次导航以来的请求 | 拿真实请求清单。跨导航要加 includePreservedRequests |
-| get_network_request | 取单条请求详情 | 带 requestFilePath / responseFilePath 可把报文写到文件，这是拿完整 body 的唯一途径 |
-| navigate_page | 导航 | initScript 参数可在页面加载前注入脚本，钩前端函数很有用 |
-| click / fill / fill_form | 输入自动化 | 走业务流程、填表单 |
-| take_screenshot | 截图 | 取证和自检。不用于定位，定位用 snapshot |
+| take_snapshot | Gets the page's accessibility tree, with element UIDs | Confirm current state, locate elements. Subsequent click / fill calls reference the UID from here |
+| evaluate_script | Executes a JS function in the page's context | Read identity fields from localStorage / sessionStorage, call the page's internal wrapper functions |
+| list_network_requests | Lists requests since this navigation | Gets the real request list. Add includePreservedRequests to span across navigations |
+| get_network_request | Gets details for a single request | With requestFilePath / responseFilePath it can write the message to a file — the only way to get the full body |
+| navigate_page | Navigate | The initScript parameter can inject a script before the page loads, useful for hooking frontend functions |
+| click / fill / fill_form | Input automation | Walk through business flows, fill in forms |
+| take_screenshot | Screenshot | Evidence and self-checks. Not for locating elements — use snapshot for that |
 
-#### 为什么 snapshot 比 screenshot 重要
+#### Why Snapshot Matters More Than Screenshot
 
-这是装完 MCP 之后最容易忽略的效率差，而且差得不小。
+This is the efficiency gap that's easiest to overlook after installing the MCP, and it's not a small one.
 
-截图是像素。模型要先做视觉识别才知道登录按钮在哪，图像 token
-按尺寸算，一张 1500×960 的截图就是一两千 token，认错了还得重来。snapshot
-是无障碍树，模型直接拿到元素的角色、可访问名和引用
-ID，下一步可以精确地说"点 uid=42
-这个按钮"——同样一个页面，结构树通常只要几百 token，而且没有歧义。
+A screenshot is pixels. The model has to do visual recognition first just to figure out where the login button is, and image tokens
+scale with dimensions — a 1500×960 screenshot alone is one or two thousand tokens, and if it misreads it, it has to try again. A snapshot
+is the accessibility tree — the model gets the element's role, accessible name, and reference
+ID directly, and the next step can say precisely "click
+uid=42" — for the same page, the structure tree usually costs only a few hundred tokens, with no ambiguity.
 
-实践约定：每步操作前 snapshot 确认状态，操作后再 snapshot
-确认结果，截图只在需要留证据时用。真要截图，记得图像 token
-随尺寸而非文件字节数增长，用 JPEG 或 WebP 比 PNG 小三到五倍。
+Practical convention: snapshot before each action to confirm state, snapshot again after to confirm the result, and only screenshot when you actually need to preserve evidence. If you do need a screenshot, remember image tokens
+scale with dimensions, not file size — JPEG or WebP run three to five times smaller than PNG.
 
-#### 它不能改包
+#### It Can't Modify Packets
 
-这是把它用于安全测试时最大的坑，也是官方明确记录的限制：目前没有任何自动化途径通过
-Chrome DevTools MCP 拦截和修改网络请求。
+This is the biggest pitfall when using it for security testing, and it's an officially documented limitation: there is currently no automated way to intercept and modify network requests through
+Chrome DevTools MCP.
 
-底层其实做得到——CDP 有 Fetch 域，Puppeteer 也有请求拦截
-API——但这套能力没有被这个 MCP 暴露成工具。社区有 PR 在做，截至该 issue
-没有维护者表态。所以别指望它，架构上必须分工：
+The underlying capability actually exists — CDP has a Fetch domain, and Puppeteer has a request-interception
+API — but that capability isn't exposed as a tool by this MCP. There's a community PR working on it, and as of that issue no maintainer had weighed in. So don't count on it — architecturally you have to split the work:
 
-| **DevTools MCP · 驱动与观测** | **代理 · 改包与重放** |
+| **DevTools MCP · Driving and Observation** | **Proxy · Modifying and Replaying** |
 |----|----|
-| 走完整业务流程：登录、下单前置步骤、多步表单 | 全量流量落盘，结构化索引，白名单在落盘时生效 |
-| 读页面内部状态：localStorage、前端变量、DOM 结构树 | 改参数重放：Burp Repeater / mitmproxy replay |
-| 执行确定性验证：payload 到底有没有真的执行 | 出站硬断：范围外连接直接杀掉 |
-| ✗ 拦截 / 篡改 / 重放请求 | ✗ 理解页面状态、驱动多步流程 |
+| Walk complete business flows: login, order-placement preconditions, multi-step forms | Write full traffic to disk, structured index, allowlist enforced at write time |
+| Read internal page state: localStorage, frontend variables, DOM structure tree | Modify parameters and replay: Burp Repeater / mitmproxy replay |
+| Perform deterministic verification: whether a payload actually executed | Hard outbound cutoff: out-of-scope connections killed outright |
+| ✗ Intercept / tamper with / replay requests | ✗ Understand page state, drive multi-step flows |
 
-把它们当成一个工具用，结果就是两头都做不好。
+Try to use them as one tool and the result is that neither job gets done well.
 
-#### 几个必须知道的默认行为
+#### A Few Default Behaviors You Have to Know
 
-**▪ 性能工具会外发 URL。** trace 可能被发给 Google 的 CrUX
-API。授权测试里务必加 --no-performance-crux，否则目标 URL 会流出去。
+**▪ The performance tooling sends URLs out.** Traces can get sent to Google's CrUX
+API. In authorized testing, always add --no-performance-crux, or the target URL leaks out.
 
-**▪ 遥测默认开启**，且与 Chrome
-浏览器自己的遥测独立，退出一个不影响另一个。加 --no-usage-statistics。
+**▪ Telemetry is on by default**, and it's independent of Chrome
+browser's own telemetry — opting out of one doesn't affect the other. Add --no-usage-statistics.
 
-**▪ 不能以 root 运行。** Chrome 以 root 身份会立即退出，容器和 CI
-镜像里常踩。镜像里建个非特权用户切过去。
+**▪ Can't run as root.** Chrome exits immediately when run as root — a common trip-up in containers and CI
+images. Create an unprivileged user in the image and switch to it.
 
-**▪ 沙箱会冲突。** 启用了 macOS Seatbelt 或 Linux 容器沙箱时它起不了
-Chrome，变通办法是连一个沙箱外手动启动的
-Chrome（--browser-url=http://127.0.0.1:9222）。
+**▪ Sandboxes conflict with it.** With macOS Seatbelt or a Linux container sandbox enabled, it can't launch
+Chrome — the workaround is to connect to a
+Chrome instance launched manually outside the sandbox (--browser-url=http://127.0.0.1:9222).
 
-**▪ 开远程调试端口有风险。**
-官方明确警告：机器上任何应用都能连这个端口并控制浏览器。用完关掉。
+**▪ Opening the remote debugging port carries risk.**
+The official docs explicitly warn: any application on the machine can connect to that port and control the browser. Close it when you're done.
 
-### 4.2 改包这一半交给谁
+### 4.2 Who Handles the Modify-the-Packet Half
 
-三个选项，按"是否官方 + 可审计性"排序。
+Three options, ordered by "official support + auditability."
 
-#### Burp Suite：有官方 MCP
+#### Burp Suite: Has an Official MCP
 
-PortSwigger 自己出的扩展，BApp Store 上架，Professional 和 Community
-都能用，只有 Collaborator 相关的两个工具限 Pro。构建后在 Extensions
-里加载 JAR，默认监听 127.0.0.1:9876。
+PortSwigger's own extension, listed on the BApp Store, works with both Professional and Community
+— only the two Collaborator-related tools are Pro-only. After building, load the JAR under Extensions
+— it listens on 127.0.0.1:9876 by default.
 
-| **工具** | **用途** |
+| **Tool** | **Use** |
 |----|----|
-| get_proxy_http_history_regex | 按正则过滤 proxy 历史。这是让模型从几万条流量里捞目标接口的主力 |
-| send_http1_request / send_http2_request | 发任意请求并拿响应，改参数重放靠它 |
-| create_repeater_tab / send_to_intruder | 把请求送进 Repeater 或 Intruder，留在 Burp 里可供人事后审阅 |
-| get_scanner_issues | 拿扫描器发现的问题让模型挑值得深挖的（Pro） |
-| generate_collaborator_payload / get_collaborator_interactions | 带外验证，SSRF 这类必需（Pro） |
-| set_proxy_intercept_state / set_task_execution_engine_state | 开关拦截、暂停任务引擎 |
-| get_proxy_websocket_history_regex | WebSocket 历史，正则过滤 |
+| get_proxy_http_history_regex | Filter proxy history by regex. The main way to have the model fish target endpoints out of tens of thousands of requests |
+| send_http1_request / send_http2_request | Send an arbitrary request and get the response — this is what modify-and-replay relies on |
+| create_repeater_tab / send_to_intruder | Send a request into Repeater or Intruder, kept in Burp for later human review |
+| get_scanner_issues | Pull scanner findings and have the model pick which ones are worth digging into (Pro) |
+| generate_collaborator_payload / get_collaborator_interactions | Out-of-band verification, needed for things like SSRF (Pro) |
+| set_proxy_intercept_state / set_task_execution_engine_state | Toggle interception, pause the task engine |
+| get_proxy_websocket_history_regex | WebSocket history, regex filtering |
 
-#### Caido：官方没做，社区版能力更全
+#### Caido: No Official Version, but the Community One Is More Capable
 
-Caido 官方博客明确说自己没有官方 MCP，博客介绍的是社区实现，通过 GraphQL
-和本地实例通信，README 列了 66
-个工具。能力覆盖请求重放、会话管理、fuzzing、findings、拦截、改包规则、WebSocket，还有
-caido_is_in_scope 这类让模型自己做范围校验的工具。
+Caido's own blog explicitly says they don't have an official MCP — what the blog covers is a community implementation that communicates with a local instance over GraphQL,
+with the README listing 66
+tools. Coverage spans request replay, session management, fuzzing, findings, interception, packet-modification rules, WebSocket, plus tools like
+caido_is_in_scope that let the model do its own scope validation.
 
-Caido 官方博客里有个论点值得直接搬进内部规范：agent 干的活会落进 Caido
-的 History、Sitemap 和 Replay collection
-并持久化，团队可以事后审阅，而不是只剩一段聊天记录。对授权测试的可审计性来说，这比多几个工具重要。
+There's a point in Caido's own blog worth lifting straight into an internal standard: everything an agent does lands in Caido's
+History, Sitemap, and Replay collections
+and persists there, so a team can review it after the fact instead of being left with nothing but a chat log. For the auditability of authorized testing, that matters more than a few extra tools.
 
-#### mitmproxy：轻量、可编程、适合自建
+#### mitmproxy: Lightweight, Programmable, Good for Building Your Own
 
-社区有 mitmproxy 的 MCP 实现，工具包括
-set_scope、search_traffic、replay_flow、add_interception_rule、export_openapi_spec（从流量反推
-OpenAPI）、detect_auth_pattern。但更常见的做法是不用 MCP，直接按 3.4
-那样写 addon 落盘成
-jsonl，再用自己的检索服务暴露给模型。可控性更好，而且护栏是自己写的。我们内部用的就是这条路。
+There's a community MCP implementation for mitmproxy, with tools including
+set_scope, search_traffic, replay_flow, add_interception_rule, export_openapi_spec (reverse-engineering an
+OpenAPI spec from traffic), and detect_auth_pattern. But the more common approach is skipping MCP entirely and just writing an addon as in 3.4
+to write to disk as
+jsonl, then exposing it to the model through your own retrieval service. More controllable, and you write the guardrails yourself. This is the path we use internally.
 
-| **关于那一堆"渗透 MCP"**　GitHub 上能搜到几十个封装 nmap / nuclei / ffuf / sqlmap 的 MCP 项目，ProjectDiscovery 和 ffuf 自己都没有官方 MCP。这类项目绝大多数是个人作品、没有安全审计，本质上是把任意命令行执行能力交给模型。内部使用前至少确认三件事：参数有没有转义、有没有做命令注入防护、有没有 scope 限制。有一个知名的聚合项目已经归档不再维护。 |
+| **On that whole pile of "pentest MCPs"**　You can find dozens of MCP projects on GitHub wrapping nmap / nuclei / ffuf / sqlmap — neither ProjectDiscovery nor ffuf has an official MCP of their own. The vast majority of these projects are personal work with no security audit, and at their core they're handing the model arbitrary command-line execution. Before using one internally, at minimum confirm three things: are parameters escaped, is there command-injection protection, and is there a scope restriction. One well-known aggregator project has already been archived and is no longer maintained. |
 |----|
 
-### 4.3 前端 JS 白盒：把压缩代码变成两张表
+### 4.3 Frontend JS White-Box: Turning Minified Code Into Two Tables
 
-现代 SPA
-的路由表、权限判断、加密逻辑全在前端。这是黑盒测试里最接近白盒的材料，而且不需要任何逆向。三条路径，按产出质量排序。
+A modern SPA's
+route table, permission checks, and encryption logic all live on the frontend. This is the closest thing to white-box material you'll get in black-box testing, and it requires no reverse engineering at all. Three approaches, ranked by output quality.
 
-#### 一、source map 还原
+#### 1. Source Map Recovery
 
-很多线上应用会把 .map 一起发出来。source map 本身就是一个 JSON：sources
-是原始文件路径列表，sourcesContent 直接内联了原始源码，mappings 是
-Base64 VLQ 编码的位置映射。只要 sourcesContent
-在，还原出来的就是打包前的真实源码，连注释都在。
+A lot of production apps ship .map files alongside their bundles. A source map is itself just JSON: sources
+is the list of original file paths, sourcesContent inlines the original source directly, and mappings is a
+Base64 VLQ-encoded position mapping. As long as sourcesContent
+is present, what you recover is the real, pre-bundling source code — comments and all.
 
 > go install github.com/denandz/sourcemapper@latest
 >
 > sourcemapper -output ./src -url https://target/assets/app.js.map
 >
 > sourcemapper -output ./src -jsurl https://target/assets/app.js #
-> 自动跟进 .map 引用
+> automatically follows the .map reference
 >
-> sourcemapper -output ./src -dir ./maps # 批量
+> sourcemapper -output ./src -dir ./maps # batch mode
 >
-> # 带鉴权 / 走代理留痕
+> # with auth / routed through a proxy for a paper trail
 >
 > sourcemapper -output ./src -jsurl https://target/app.js \\
 >
 > -header "Cookie: session=..." -proxy http://127.0.0.1:8080
 
-还原出来是带原始文件名和目录结构的源码。到这一步就回到普通白盒审计了，可以直接套
-4.5 那套三阶段流程。
+What comes out is source code with its original filenames and directory structure. At this point you're back to ordinary white-box auditing, and can apply the three-stage process from 4.5
+directly.
 
-#### 二、AST 提取（没有 map 时的主力）
+#### 2. AST Extraction (The Workhorse When There's No Map)
 
-jsluice 用 tree-sitter 解析语法树，去找 URL 已知会被使用的位置，比如赋给
-document.location、传给 fetch() 或 window.open()。
+jsluice uses tree-sitter to parse the syntax tree and find places where a URL is known to get used — assigned to
+document.location, passed to fetch(), or window.open(), for example.
 
-它和正则工具的本质差别是理解字符串拼接：无法静态求值的表达式会被替换成
-EXPR 占位符。一句拼接模板字符串的 fetch("/api/v2/users/" + id +
-"/roles") 会被还原成 /api/v2/users/EXPR/roles。重建 API
-路由表时这一点价值极大，纯正则做不到——正则看到的是一堆模板字符串碎片，AST
-看到的是一条路由。
+What sets it apart from regex tools at a fundamental level is that it understands string concatenation: expressions that can't be statically evaluated get replaced with an
+EXPR placeholder. A concatenated template-string call like fetch("/api/v2/users/" + id +
+"/roles") gets recovered as /api/v2/users/EXPR/roles. This is enormously valuable when rebuilding an API
+route table — plain regex can't do it, since regex only sees a pile of template-string fragments, while AST
+sees a single route.
 
 > go install github.com/BishopFox/jsluice/cmd/jsluice@latest
 >
-> jsluice urls --resolve-paths https://target app.js # 结构化 JSON：url
+> jsluice urls --resolve-paths https://target app.js # structured JSON: url
 > / queryParams / method / type / source
 >
 > jsluice secrets app.js
 
-#### 三、正则兜底与交叉验证
+#### 3. Regex as a Fallback and Cross-Check
 
-LinkFinder 用四条正则分别匹配完整
-URL、绝对路径、带斜杠和不带斜杠的相对路径。对压缩混淆后的拼接路径几乎无效、噪声大，但作为交叉验证的第二来源还是有用的——jsluice
-漏掉的偶尔能被它捞到。Burp 侧对应的是 JS Miner
-扩展，能被动扫描并主动猜测 .map 文件，误报较多，需要人工复核。
+LinkFinder uses four regexes to match complete
+URLs, absolute paths, and relative paths with and without a leading slash. It's nearly useless against concatenated paths after minification/obfuscation and is noisy, but it's still useful as a second cross-validation source — it occasionally catches something jsluice
+missed. The Burp-side equivalent is the JS Miner
+extension, which can passively scan and actively guess at .map files — higher false-positive rate, needs manual review.
 
-#### 这一步真正要产出的是两张表
+#### What This Step Should Actually Produce: Two Tables
 
-| **表** | **内容** | **写到哪** |
+| **Table** | **Contents** | **Where it goes** |
 |----|----|----|
-| API 清单 | 方法、路径（无法静态求值的段用 EXPR）、参数名、调用它的模块 | assets/routes.md |
-| 身份字段分类 | 哪些字段服务端下发、哪些客户端自报，后者用在哪些接口上 | assets/identity.md |
+| API inventory | Method, path (segments that can't be statically evaluated use EXPR), parameter names, the module that calls it | assets/routes.md |
+| Identity-field classification | Which fields are server-issued vs. client-self-reported, and which endpoints the latter are used on | assets/identity.md |
 
-第二张表是后续所有越权类假设的来源，也是 3.3 那条 P-012
-模式的检测入口。做完这两张表，后面的测试就从"不知道从哪下手"变成了"按表逐行验证"。
+The second table is the source for every broken-access-control hypothesis downstream, and it's also the detection entry point for the P-012
+pattern from 3.3. With both tables done, testing stops being "not sure where to start" and becomes "verify row by row against the table."
 
-| 前端有 role 检查不代表后端有。前端发现的鉴权逻辑只是线索，必须回到代理侧做服务端验证。 |
+| A role check on the frontend doesn't mean the backend has one too. Auth logic found on the frontend is only a lead — you must go back to the proxy side and do server-side verification. |
 |----|
 
-### 4.4 一条完整的越权验证链路
+### 4.4 One Complete Broken-Access-Control Verification Chain
 
-把前面三节拼起来，一个真实形状的闭环长这样：
+Stitch the previous three sections together, and a realistic-shaped closed loop looks like this:
 
-| **步骤** | **谁做** | **动作** |
+| **Step** | **Who does it** | **Action** |
 |----|----|----|
-| ① | 模型 | jsluice 出路由表 |
-| ② | 模型 | 分类身份字段，找出客户端自报项 |
-| ③ | 模型 | DevTools 读 localStorage / sessionStorage，动态确认字段存在且可改 |
-| ④ | 模型 | 代理侧改值重放 |
-| ⑤ | 模型 | 返回他人数据 → 越权成立 |
-| ⑥ | **人** | 立即停，取 1 条证据，独立复核 |
+| ① | Model | Extract the route table with jsluice |
+| ② | Model | Classify identity fields, find the client-self-reported ones |
+| ③ | Model | Use DevTools to read localStorage / sessionStorage, dynamically confirm the field exists and is modifiable |
+| ④ | Model | Modify the value on the proxy side and replay |
+| ⑤ | Model | Response contains someone else's data → broken access control confirmed |
+| ⑥ | **Human** | Stop immediately, take 1 piece of evidence, review independently |
 
-①到⑤模型自己走完，人只做⑥。第 ⑥
-步的"立即停"是规则层强制的：证明越权成立只需要一条记录，继续拉取就从测试变成了数据获取，这是定性差别不是程度差别。
+The model walks through ① to ⑤ on its own; a human only does ⑥. The "stop immediately" in step ⑥
+is enforced at the rules layer: proving broken access control only needs one record — continuing to pull more turns testing into data harvesting, and that's a difference in kind, not degree.
 
-第 ③
-步值得单独说一句，因为它是压误报的关键。静态结论说"这个字段是客户端自报的"，动态确认"它确实存在且值可改"，两边对上了才进入第
-④ 步。只有静态结论就直接去改包，误报率会高很多——打包工具留下的死代码、被
-feature flag 关掉的分支，静态看都像真的。
+Step ③
+deserves its own note, because it's the key to cutting false positives. A static conclusion says "this field is client-self-reported"; a dynamic check confirms "it actually exists and its value is modifiable" — only once both line up do you move to step
+④. Going straight to packet modification off a static conclusion alone produces a much higher false-positive rate — dead code left behind by the bundler, or branches disabled by a
+feature flag, both look real under static analysis alone.
 
-### 4.5 别让模型自己判断有没有漏洞
+### 4.5 Don't Let the Model Judge Whether There's a Vulnerability on Its Own
 
-这一节讲的是 token 预算里那 20% 到 30% 的验证环节。Web
-端是三种形态里最容易把验证做扎实的，因为浏览器能给出确定性答案。
+This section covers the 20% to 30% verification portion of the token budget. Web
+is the easiest of the three form factors to make verification solid on, because the browser can give a deterministic answer.
 
-#### 确定性验证：XBOW 的做法
+#### Deterministic Verification: How XBOW Does It
 
-XBOW 在 2025 年 6 月成为 HackerOne 美国区排行榜第一名，是首个登顶的自主
-AI。它公开的架构细节不多，但验证环节说得很清楚：自建了一组
-validator，逐条确认每个发现。
+XBOW became the #1 ranked account on HackerOne's US leaderboard in June 2025 — the first autonomous
+AI to top it. They haven't published much architectural detail, but the verification step is described clearly: they built their own set of
+validators that confirm each finding one by one.
 
-XSS 的验证方式是让一个无头浏览器访问目标，确认 JavaScript payload
-是否真的被执行了。不是让模型判断"这里看起来能
-XSS"，而是让浏览器给出一个二值答案。
+XSS gets verified by having a headless browser visit the target and confirming whether the JavaScript payload
+actually executed. It's not the model judging "this looks like it could be
+XSS" — it's the browser producing a binary answer.
 
-把这个思路搬到工作台上：凡是能写成"确定性检查"的判据，就不要留给模型判断。
+Carry that idea over to the workbench: whatever criterion can be written as a "deterministic check" should never be left to the model's judgment.
 
-| **漏洞类型** | **确定性判据** |
+| **Vulnerability type** | **Deterministic criterion** |
 |----|----|
-| XSS | payload 有没有被真正执行（无头浏览器回调 / DOM 变化） |
-| 越权 | 响应里有没有不属于测试账号的业务标识 |
-| SSRF | 带外通道有没有收到回连 |
-| 任意程序执行 | 目标进程有没有真的起来（第五部分那个案例用的是 calc.exe 弹窗） |
+| XSS | Whether the payload actually executed (headless-browser callback / DOM change) |
+| Broken access control | Whether the response contains a business identifier that doesn't belong to the test account |
+| SSRF | Whether the out-of-band channel received a callback |
+| Arbitrary code execution | Whether the target process actually started (the case study in Part Five used a calc.exe popup) |
 
-这些都能写进任务书的命中判据里，写成可判定的条件而不是"看起来可疑"。
+All of these can go straight into a task brief's hit criteria, written as decidable conditions rather than "looks suspicious."
 
-#### 对抗性自审：让同一个模型去证伪自己
+#### Adversarial Self-Review: Have the Same Model Try to Disprove Itself
 
-Andrew Hoffman 用 Claude Code
-做白盒审计时的三阶段方法值得直接抄，尤其是第二阶段：
+Andrew Hoffman's three-phase method for white-box auditing with Claude Code
+is worth copying directly, especially phase two:
 
-| **阶段** | **做什么** |
+| **Phase** | **What happens** |
 |----|----|
-| Phase 0 · 设置 | 选最强模型；配置成只读源码、禁止写操作；关闭遥测防止代码在日志里泄露；在临时 git 分支上执行 |
-| Phase 1 · 侦察 | 映射结构、框架、依赖，识别入口点和信任边界。刻意不做深度挖掘以节省 token，输出到结构化 markdown，刻意限定在小范围文件集 |
-| Phase 2 · 三步审查 | 先找高危，每个发现给出 0‒100 置信度、CVSS 估计、复现步骤和唯一 ID；然后同一个 agent 反转目标，试图证伪自己的发现；最后裁定，产出带 OWASP / CVSS 元数据的报告 |
+| Phase 0 · Setup | Pick the strongest model; configure it to read-only source, writes forbidden; disable telemetry so code doesn't leak into logs; run it on a throwaway git branch |
+| Phase 1 · Recon | Map the structure, frameworks, dependencies, identify entry points and trust boundaries. Deliberately skip deep digging to save tokens, output to structured markdown, deliberately scoped to a small file set |
+| Phase 2 · Three-Step Review | Find high-severity issues first, giving each finding a 0‒100 confidence score, a CVSS estimate, reproduction steps, and a unique ID; then the same agent flips its goal and tries to disprove its own findings; finally, a verdict, producing a report with OWASP / CVSS metadata |
 
-他在 WordPress 4.7 上跑出了 CVE-2017-6818（tags-box.js 里的 DOM
-XSS），置信度中等，CVSS 估 5.4，CWE-79
-归类正确。但他同时记录了一个更有价值的失败：Claude 引用了据称存在于 4.7
-的缓解过滤器，而那些过滤器只存在于后续版本。这是"自信的错误分析"的教科书例子。他初始报告的三个发现里，有两个在对抗性复审中被自己证伪。
+He ran this against WordPress 4.7 and turned up CVE-2017-6818 (a DOM
+XSS in tags-box.js), medium confidence, CVSS estimated at 5.4, correctly classified as CWE-79
+. But he also documented an even more valuable failure: Claude cited mitigation filters supposedly present in 4.7
+that actually only existed in later versions — a textbook example of "confident wrong analysis." Of the three findings in his initial report, two were disproven by the model itself during adversarial re-review.
 
-对抗性自审之所以有效，利用的正是 1.6
-里那条"默认顺从"。正着问"这个发现对吗"，模型顺着你确认；反着问"请证明这个发现是错的"，同一个倾向就变成了对自己结论的攻击。代价只是多一轮
-token，收益是误报率显著下降。建议换不同措辞多跑几次。
+Adversarial self-review works precisely because it exploits the "default compliance" bias from 1.6
+. Asked directly "is this finding correct," the model tends to just confirm it for you; asked in reverse "prove this finding is wrong," that same tendency turns into an attack on its own conclusion. The cost is just one extra round of
+tokens; the payoff is a noticeably lower false-positive rate. Worth running a few times with different phrasing.
 
-#### 一个可以随便打的靶场
+#### A Range You're Free to Beat Up
 
-XBOW 开源了它的 validation-benchmarks：104 个 CTF 式 Web
-挑战，每个有隐藏 flag，Docker Compose 一键起，flag
-在构建时注入而不是硬编码。仓库自己警告只在隔离环境使用。
+XBOW open-sourced its validation-benchmarks: 104 CTF-style Web
+challenges, each with a hidden flag, spun up with one Docker Compose command, with the
+flag injected at build time rather than hardcoded. The repo itself warns to use it only in an isolated environment.
 
-这东西对内部落地很有用：现成的、合法的、可自托管的靶场，用来评估自己的
-agent 流程、调提示词、练手感，全程不用碰真实目标。PentestGPT 在 2025 年
-12 月的实验里对这套 benchmark 拿到 86.5%
-的成功率（90/104），可以作为参照基线。需要注意的是这套 benchmark 截至
+This is genuinely useful for rolling things out internally: a ready-made, legal, self-hostable range for evaluating your own
+agent pipeline, tuning prompts, and getting a feel for the process — all without ever touching a real target. PentestGPT scored 86.5%
+success (90/104) on this benchmark in a December 2025 experiment, which can serve as a reference baseline. Worth noting: as of mid-
 2026
-年中已被标记为过时，性能基本饱和——它现在适合练手，不适合用来证明谁更强。
+this benchmark has been flagged as dated, with performance mostly saturated — it's fine for practice now, not for proving who's stronger.
 
-### 4.6 优缺点与红线
+### 4.6 Trade-offs and Hard Limits
 
-| **优点** | **缺点** |
+| **Advantages** | **Disadvantages** |
 |----|----|
-| 入门门槛最低，半天就能跑通第一个闭环 | WAF 和频控最先撞上，模型请求快，容易触发限速甚至封 IP |
-| 工具链最全，抓包、调试、自动化都有现成方案 | 现代 SPA 状态多，偶尔会迷失在重复渲染里 |
-| 前端 JS 就是现成的白盒材料，不需要任何逆向 | CSP 和反自动化脚本会让 evaluate_script 失效或被检测 |
-| 模型可驾驶度最高，点填读判全程无人值守 | 前端加密签名字段会让重放失败，得先逆算法 |
-| 验证可以做成确定性的，误报率天然低于另两种形态 | DevTools MCP 不能改包，必须再架一层代理 |
+| Lowest barrier to entry — you can get the first closed loop running in half a day | WAF and rate limiting are the first things you run into — the model requests fast, easy to trip rate limits or even get an IP banned |
+| The most complete tooling — traffic capture, debugging, automation all have ready-made solutions | Modern SPAs carry a lot of state, and the model occasionally gets lost in repeated re-renders |
+| Frontend JS is ready-made white-box material — no reverse engineering needed | CSP and anti-automation scripts can break evaluate_script or get it detected |
+| The highest degree to which the model can drive itself — clicking, filling, reading, judging, all unattended | Frontend encryption/signature fields will break replay — you have to reverse the algorithm first |
+| Verification can be made deterministic, giving this form factor a naturally lower false-positive rate than the other two | DevTools MCP can't modify packets — you have to stand up a separate proxy layer |
 
-| **Web 端特有红线：速率**　模型不懂刷太快会被封。规则文件写死每请求间隔 ≥ 1.2 秒，并且记住 3.6 那条：多个子 agent 并行时按全局算。不设这条，典型结局是测试只做了三分之一，出口 IP 已经进了黑名单，剩下的工作要等换 IP 或等封禁过期。授权测试的时间窗通常有限，损失的是这个。被限速时停下来，不要试图绕——绕过频控这件事本身通常超出授权范围。 |
+| **A hard limit specific to Web: rate**　The model doesn't know that hammering too fast gets you banned. Lock "≥ 1.2 seconds between requests" into the rules file, and remember the point from 3.6: when multiple sub-agents run in parallel, the rate is calculated globally. Skip this and the typical outcome is that testing is only a third done and the egress IP is already blacklisted, with the rest of the work waiting on an IP change or the ban expiring. Authorized-testing time windows are usually limited, and that's what gets lost. When you hit rate limiting, stop — don't try to get around it. Bypassing rate control is itself usually outside the authorized scope. |
 |----|
 
-## 第五部分：客户端：小程序与 Electron
+## Part Five: Client Side — Mini-Programs and Electron
 
 
 ------------------------------------------------------------------------
 
-这类目标处在 Web 和 APP
-之间：代码打包在本地，但不编译成机器码，提取出来就是能读的
-JS。它们还有一个共同特点——鉴权往往比 Web
-端更弱，因为开发者默认"客户端是我写的、用户改不了"。这个假设在 Web
-上大家已经不敢做了，在小程序和 Electron
-上还相当普遍。本部分最后那个案例，根因说到底就是这个假设。
+This class of target sits between Web and
+APP: the code is bundled locally, but not compiled to machine code — extract it and you get readable
+JS. They share one other trait too — auth tends to be weaker than on the
+Web side, because developers default to assuming "I wrote the client, the user can't modify it." Nobody dares make that assumption on the Web
+anymore, but it's still fairly common in mini-programs and Electron
+apps. The case study at the end of this part comes down, at root, to exactly this assumption.
 
-| **小节** | **讲什么**                                          |
+| **Section** | **What it covers**                                          |
 |----------|-----------------------------------------------------|
-| 5.1      | wxapkg 的结构与解密                                 |
-| 5.2      | 解包工具与代码还原                                  |
-| 5.3      | 抓包：为什么要上 Proxifier                          |
-| 5.4      | 自动化：UIA 是唯一通路                              |
-| 5.5      | Electron：asar、fuses、webPreferences               |
-| 5.6      | MCP 与优缺点                                        |
+| 5.1      | The structure and decryption of wxapkg                                 |
+| 5.2      | Unpacking tools and code recovery                                  |
+| 5.3      | Traffic capture: why you need Proxifier                          |
+| 5.4      | Automation: UIA is the only path                              |
+| 5.5      | Electron: asar, fuses, webPreferences               |
+| 5.6      | MCP and trade-offs                                        |
 
-### 5.1 wxapkg 的结构与解密
+### 5.1 The Structure and Decryption of wxapkg
 
-格式很简单，全文件大端序，14
-字节固定头加一个索引区，数据区是明文未压缩的原始内容。
+The format is simple — the whole file is big-endian, a 14
+-byte fixed header plus an index region, with the data region being plaintext, uncompressed raw content.
 
-| **区段** | **长度** | **内容** |
+| **Section** | **Length** | **Content** |
 |----|----|----|
-| 魔数 | 1 B | 0xBE |
+| Magic number | 1 B | 0xBE |
 | unknownInfo | 4 B | — |
-| infoListLength | 4 B | 索引区长度 |
-| dataLength | 4 B | 数据区长度 |
-| 结束标志 | 1 B | 0xED |
-| 索引区 | infoListLength | fileCount，然后每个文件：nameLen / name / fileOff / fileLen |
-| 数据区 | dataLength | 明文，不压缩 |
+| infoListLength | 4 B | Index region length |
+| dataLength | 4 B | Data region length |
+| End marker | 1 B | 0xED |
+| Index region | infoListLength | fileCount, then per file: nameLen / name / fileOff / fileLen |
+| Data region | dataLength | Plaintext, uncompressed |
 
-PC 微信落盘的包在这之外多一层加密：文件头 6 字节是 V1MMWX 标志，随后
-1024 字节走 AES-256-CBC，其余部分是单字节 XOR。
+Packages that PC WeChat writes to disk have an extra encryption layer on top of this: the first 6 bytes of the file header are the V1MMWX marker, followed by
+1024 bytes under AES-256-CBC, with the rest under single-byte XOR.
 
-> 密钥派生 key = PBKDF2(password = AppID, salt = b'saltiest',
+> Key derivation key = PBKDF2(password = AppID, salt = b'saltiest',
 >
 > dkLen = 32, count = 1000, hmac = SHA1)
 >
-> IV b'the iv: 16 bytes' # 固定 16 字节字符串
+> IV b'the iv: 16 bytes' # fixed 16-byte string
 >
-> XOR key AppID 倒数第二个字符的 ASCII
+> XOR key ASCII value of the second-to-last character of the AppID
 >
-> 拼接 originData[0:1023] + xorData # 注意是 1023 不是 1024
+> Concatenation originData[0:1023] + xorData # note: 1023, not 1024
 
-最后那个 1023 是实现上的经典坑：AES 段解出来是 1024 字节，但拼接时只取前
-1023 字节，写成 1024
-整个包就解不开。所有能跑通的解包器都是这么写的，照抄就行。AppID 就是
-{wxid} 目录名，解密所需的全部素材都在路径里。
+That 1023 at the end is a classic implementation gotcha: the AES segment decrypts to 1024 bytes, but only the first
+1023 bytes get used in the concatenation — write 1024
+and the whole package fails to decrypt. Every unpacker that actually works is written this way — just copy it. The AppID is
+the {wxid} directory name — everything needed for decryption is right there in the path.
 
-| **一条需要纠正的流传说法**　不少中文博客把 wxapkg 头部写成小端序 <4sIII、magic 为 V1MM 或 wxsg、数据区 zlib 压缩。这与所有实际可运行的解包器实现都不符。V1MMWX 是 PC 端加密层的标志，不是包格式的 magic；数据区也不压缩。以 0xBE 开头、0xED 结尾、大端序、明文数据区为准。 |
+| **A widely-circulated claim that needs correcting**　A lot of Chinese-language blogs describe the wxapkg header as little-endian <4sIII, with a magic of V1MM or wxsg, and a zlib-compressed data region. This doesn't match any actually-working unpacker implementation. V1MMWX is the marker for the PC-side encryption layer, not the package format's magic bytes; the data region isn't compressed either. Go with: starts with 0xBE, ends with 0xED, big-endian, plaintext data region. |
 |----|
 
-#### 包在哪
+#### Where the Package Lives
 
-微信 4.0 是个分水岭，PC 端的路径从文档目录搬到了 AppData。
+WeChat 4.0 was a dividing line — the PC-side path moved from the Documents folder to AppData.
 
 > Windows < 4.0
 >
-> `C:\Users\<用户>\Documents\WeChat Files\Applet\<wxid>\<n>\__APP__.wxapkg`
+> `C:\Users\<user>\Documents\WeChat Files\Applet\<wxid>\<n>\__APP__.wxapkg`
 >
 > Windows >= 4.0
 >
-> `C:\Users\<用户>\AppData\Roaming\Tencent\xwechat\radium\Applet\packages\<wxid>\<n>\__APP__.wxapkg`
+> `C:\Users\<user>\AppData\Roaming\Tencent\xwechat\radium\Applet\packages\<wxid>\<n>\__APP__.wxapkg`
 >
 > macOS >= 4.0
 >
@@ -1466,383 +1459,380 @@ PC 微信落盘的包在这之外多一层加密：文件头 6 字节是 V1MMWX 
 >
 > `/data/data/com.tencent.mm/MicroMsg/<userHash>/appbrand/pkg/`
 
-#### 解包时最容易漏的一件事：分包
+#### The Thing Most Often Missed When Unpacking: Sub-Packages
 
-同一个 `<wxid>/<n>/` 目录下常有多个 .wxapkg。主包有 2MB
-上限，开发者会把低频但敏感的功能——后台管理、支付、实名认证——塞进分包。只解主包会得出"这个小程序几乎没有接口"的错误结论，而恰好分包里放的才是值钱的东西。
+The same `<wxid>/<n>/` directory often has multiple .wxapkg files. The main package has a 2MB
+cap, so developers push low-frequency-but-sensitive functionality — admin backends, payment, real-name verification — into sub-packages. Unpacking only the main package gets you the wrong conclusion that "this mini-program barely has any endpoints," when the sub-packages are exactly where the valuable stuff lives.
 
-老的 wxappUnpacker 需要先解主包、再带 -s 指向主包输出目录解分包，因为
-\$gwx、公共样式和 app-config.json
-都在主包里。新工具（wedecode、unveilr）会自动合并，但要求把主包和分包放在同一目录。
+The old wxappUnpacker requires unpacking the main package first, then passing -s pointing at the main package's output directory to unpack sub-packages, because
+$gwx, shared styles, and app-config.json
+all live in the main package. Newer tools (wedecode, unveilr) merge them automatically, but require the main and sub-packages to sit in the same directory.
 
-| **微信 4.1.x 之后**　有工具反馈老解密方案在 4.1.x 之后失效，wedecode 宣称已支持 4.X。但我们没有查到任何公开文档写明 4.x 具体改了什么（新 magic 还是新 KDF），所以这里不给结论。实操上就是：把可用的工具版本和对应的微信版本号记进 memory/tools.md，下次直接查表，别每次重新试。 |
+| **After WeChat 4.1.x**　Some tools report the old decryption approach stopped working after 4.1.x, and wedecode claims to support 4.X. But we haven't found any public documentation stating exactly what changed in 4.x (a new magic value, or a new KDF), so no firm conclusion here. In practice: log which tool version works with which WeChat version in memory/tools.md, and check the table next time instead of retrying from scratch. |
 |----|
 
-### 5.2 解包工具与代码还原
+### 5.2 Unpacking Tools and Code Recovery
 
-| **工具** | **语言** | **状态** | **特点** |
+| **Tool** | **Language** | **Status** | **Notes** |
 |----|----|----|----|
-| wedecode | Node.js | 活跃 | 社区目前首推。全自动，交互式扫描本机小程序，跨平台，支持小游戏 / 插件 / 分包 |
-| unveilr | TypeScript | 活跃 | 用 Babel AST 而非正则做解析，对新版混淆更稳；Windows 下从路径自动提取 AppID 自动解密 |
-| KillWxapkg | Go | 活跃 | 纯 Go 单文件；自带 -hook 开 F12、-repack 回包、-sensitive 敏感信息导出 |
-| wxappUnpacker | Node.js | 停更 | 所有后来者的祖宗，正则加手写 parser。新版包格式常失败，但它的 DETAILS.md 是格式文档 |
-| wux1an/wxapkg | Go | 已归档 | 2026-02 归档，作者表示无力跟进微信更新，推荐改用 wedecode |
+| wedecode | Node.js | Active | Currently the community's top pick. Fully automatic, interactively scans local mini-programs, cross-platform, supports mini-games / plugins / sub-packages |
+| unveilr | TypeScript | Active | Parses using a Babel AST rather than regex, more stable against newer obfuscation; on Windows, auto-extracts the AppID from the path and auto-decrypts |
+| KillWxapkg | Go | Active | Single-file, pure Go; built-in -hook to enable F12, -repack to repackage, -sensitive to export sensitive info |
+| wxappUnpacker | Node.js | Unmaintained | The ancestor of everything that came after — regex plus a hand-written parser. Often fails on newer package formats, but its DETAILS.md is still the format documentation |
+| wux1an/wxapkg | Go | Archived | Archived 2026-02, author cited inability to keep up with WeChat updates, recommends switching to wedecode |
 
 > npm i wedecode -g
 >
-> wedecode # 交互式，自动扫描本机小程序
+> wedecode # interactive, auto-scans local mini-programs
 >
 > wedecode ./ --out output_path --clear --open-dir
 >
-> wedecode ./name.wxapkg --unpack-only # 只解包不反编译
+> wedecode ./name.wxapkg --unpack-only # unpack only, no decompilation
 >
 > npm i unveilr -g
 >
 > unveilr wx /path/to/wxapkg/ -i wx11aa22bb33cc44dd -f
 
-#### 解出来是什么
+#### What You Get Out of It
 
-小程序是双线程架构：WXML 和 WXSS 在渲染层（WebView），JS
-在逻辑层（JSCore），两者经微信客户端中转。编译产物就按这个分成两大块。
+A mini-program is a dual-thread architecture: WXML and WXSS live in the render layer (WebView), JS
+lives in the logic layer (JSCore), and the two communicate via the WeChat client. The compiled output splits into two big chunks accordingly.
 
-| **产物** | **是什么** | **怎么用** |
+| **Artifact** | **What it is** | **How to use it** |
 |----|----|----|
-| app-service.js | 逻辑层全部业务 JS，每个原始文件被包成 define("path/to/x.js", function(require, module, exports){...}) | 解析这些 define 调用，用第一个参数当路径把函数体写回磁盘。变量名不会恢复，还原出的是"可读但变量名仍是 a/b/c"的状态 |
-| page-frame.html | 渲染层框架，内含 \$gwx（持有全部 wxml）和 setCssToHead | 验证解析是否正确最省事的办法：丢进 Chrome，控制台执行 \$gwx("./pages/index/index.wxml")，返回该模板的虚拟 DOM |
-| app-config.json | 全局配置加每个页面的 window 配置 | 里面的 pages 和 subPackages 就是页面路由表的第一手来源 |
+| app-service.js | All logic-layer business JS — each original file wrapped as define("path/to/x.js", function(require, module, exports){...}) | Parse these define calls and use the first argument as the path to write the function body back to disk. Variable names aren't recovered — what you get is "readable, but variable names are still a/b/c" |
+| page-frame.html | The render-layer framework, containing $gwx (holds all the wxml) and setCssToHead | The easiest way to verify parsing is correct: drop it into Chrome, run $gwx("./pages/index/index.wxml") in the console, and it returns that template's virtual DOM |
+| app-config.json | Global config plus per-page window config | The pages and subPackages fields inside are the first-hand source for the page route table |
 
-#### 路由表和签名函数藏在哪
+#### Where the Route Table and Signing Function Are Hiding
 
-**▪** 路由表在三处：app-config.json 的 pages / subPackages；一个集中的
-config.js 或 api.js（找 baseURL / BASE_API 这类常量）；各页面的
-wx.request({url: ...}) 调用点。
+**▪** The route table lives in three places: pages / subPackages in app-config.json; a centralized
+config.js or api.js (look for constants like baseURL / BASE_API); and each page's
+wx.request({url: ...}) call sites.
 
-**▪** 签名函数不要挨个文件翻。先 grep 关键词（sign / hmac / CryptoJS /
-nonce / timestamp / appSecret），然后找 wx.request
-的统一封装层——签名基本都在那里往 header 里塞，顺着调用链回溯就能定位。
+**▪** Don't hunt for the signing function file by file. Grep for keywords first (sign / hmac / CryptoJS /
+nonce / timestamp / appSecret), then find the unified wrapper layer around
+wx.request — the signature is almost always stuffed into a header right there, and tracing the call chain back from it will locate it.
 
-**▪** 还原出来的典型形状是参数字典序拼接加时间戳加固定盐再
-MD5。这类算法还原是模型很擅长的活，第七部分有对应的提问模板，关键是那句"无法确定的部分必须标注，不要用常见做法补全"。
+**▪** The typical recovered shape is: parameters sorted lexicographically and concatenated, plus a timestamp, plus a fixed salt, then
+MD5. This kind of algorithm recovery is something the model is quite good at — Part Seven has a matching prompt template, and the key line in it is "anything that can't be determined must be flagged, not filled in with a common-guess default."
 
-### 5.3 抓包：为什么要上 Proxifier
+### 5.3 Traffic Capture: Why You Need Proxifier
 
-PC 微信的小程序渲染进程 WeChatAppEx.exe 不走 Windows
-系统代理。只设系统代理，Burp 里什么都看不到。需要 Proxifier
-在系统层面按进程强制把流量推进代理。
+PC WeChat's mini-program render process, WeChatAppEx.exe, doesn't go through the Windows
+system proxy. Set only the system proxy and Burp sees nothing. You need Proxifier
+to force traffic into the proxy at the system level, per-process.
 
-**1. 定位进程**　任务管理器找
-WeChatAppEx，右键打开文件位置拿完整路径。主进程是 Weixin.exe（旧版
-WeChat.exe），连主进程一起加进规则更稳。
+**1. Locate the process**　Find
+WeChatAppEx in Task Manager, right-click to open its file location and get the full path. The main process is Weixin.exe (WeChat.exe in older versions) — adding it to the rule alongside the sub-process is more reliable.
 
-**2. Proxifier 规则**　Proxy Servers 里填 127.0.0.1:8080，协议选
-HTTPS；Proxification Rules 里新建一条，Applications 填上一步的
-exe，Action 指向该代理，默认规则保持 Direct。
+**2. Proxifier rule**　Under Proxy Servers, enter 127.0.0.1:8080, protocol
+HTTPS; under Proxification Rules, create a new one, put the
+exe from the previous step under Applications, point Action at that proxy, and leave the default rule as Direct.
 
-**3. 证书**　Burp 的 cacert.der 改名 .cer，用 certmgr.msc
-导入受信任的根证书颁发机构，不是"个人"。
+**3. Certificate**　Rename Burp's cacert.der to .cer, and import it via certmgr.msc
+into Trusted Root Certification Authorities, not "Personal."
 
-#### 小程序有没有证书固定
+#### Does the Mini-Program Have Certificate Pinning
 
-微信官方文档写得很明确：小程序只能与配置在后台的合法域名通信，仅支持
-https 和 wss，服务器证书必须由受信任 CA
-签发、域名匹配、在有效期内、证书链完整，iOS 不支持自签名。这是标准 CA
-校验，不是 SSL Pinning。所以只要 Burp 的 CA 进了系统受信任根，PC
-端小程序流量就能解密。
+WeChat's official documentation is explicit: mini-programs can only communicate with domains registered as legitimate in the backend, only
+https and wss are supported, and the server certificate must be issued by a trusted CA,
+match the domain, be within its validity period, and have a complete chain — iOS doesn't support self-signed certs. This is standard CA
+validation, not SSL pinning. So as long as Burp's CA is in the system trust root, PC-side
+mini-program traffic can be decrypted.
 
-开发者工具里那个"不校验合法域名、TLS 版本以及 HTTPS
-证书"的开关是开发期用的，只在开发者工具和真机调试模式下生效。我们没有找到权威资料证明小程序运行时做了额外的
-pinning。但要注意另一回事：不少业务方会在小程序 JS
-层做应用层加密，请求体加密加签名，抓到包也读不懂。那是 5.2
-说的签名还原问题，和传输层 pinning 是两码事，别混为一谈。
+The "don't validate legitimate domains, TLS version, or HTTPS
+certificate" toggle in the developer tools is a development-time setting, only effective in the developer tools and real-device debug mode. We haven't found authoritative material proving the mini-program runtime does any additional
+pinning. But note a separate issue: plenty of business teams do application-layer encryption in the mini-program's JS
+layer — encrypting and signing the request body — so even with the packet captured, you can't read it. That's the signature-recovery problem covered in 5.2
+, a different matter entirely from transport-layer pinning — don't conflate the two.
 
-#### 开调试模式
+#### Enabling Debug Mode
 
-三条路线，都是社区方案，没有官方支持，而且都强依赖微信版本。
+Three routes, all community solutions with no official support, and all strongly version-dependent on WeChat.
 
-| **路线** | **做法** | **代价** |
+| **Route** | **Method** | **Cost** |
 |----|----|----|
-| 现成工具 | x0tools/WeChatOpenDevTools（Node，双击 bat，运行前先关微信）、JaveleyQAQ/WeChatOpenDevTools-Python（main.py -x 开小程序 DevTools，-c 开内置浏览器），或 KillWxapkg -hook | 都是直接进程 hook，不走标准调试端口，所以每个都标注了支持的微信/小程序版本号，版本不对就不工作 |
-| 内存补丁 | 用 Frida hook 小程序加载函数，把 "enable_vconsole":false 改成 true；再把 DevTools 界面从阉割版 wechat_app.html 换成完整版 wechat_web.html | 要自己动手；手工替代方案是 Cheat Engine 直接搜内存里那个字符串改掉，注意字节长度。地址随版本变化 |
+| Ready-made tools | x0tools/WeChatOpenDevTools (Node, double-click the bat file, close WeChat before running), JaveleyQAQ/WeChatOpenDevTools-Python (main.py -x opens mini-program DevTools, -c opens the built-in browser), or KillWxapkg -hook | All do direct process hooking rather than going through a standard debug port, so each one lists which WeChat/mini-program versions it supports — wrong version, doesn't work |
+| Memory patching | Use Frida to hook the mini-program's loading function and flip "enable_vconsole":false to true; then swap the DevTools UI from the stripped-down wechat_app.html to the full wechat_web.html | Requires doing it yourself; the manual fallback is searching memory directly for that string with Cheat Engine and overwriting it — watch the byte length. The address shifts between versions |
 
-| **另一条要剔除的说法**　网上有把 --disable-gpu 说成微信调试开关的。我们没有找到任何佐证。它是标准 Chromium 禁用硬件加速的开关，常用于解决截图黑屏，本身不开启任何调试功能。 |
+| **Another claim worth debunking**　Some sources online describe --disable-gpu as a WeChat debug switch. We found no evidence for this. It's the standard Chromium flag for disabling hardware acceleration, commonly used to fix black-screen screenshots — it doesn't enable any debug functionality on its own. |
 |----|
 
-### 5.4 自动化：UIA 是唯一通路
+### 5.4 Automation: UIA Is the Only Path
 
-想在真实小程序里自动操作（登录、翻页、走业务流程），第一反应通常是合成鼠标键盘事件。这条路走不通。但原因和常见说法不太一样，值得说准确一点，因为它决定了对策。
+Wanting to automate real interactions in a mini-program (logging in, paging through, walking a business flow), the first instinct is usually to synthesize mouse and keyboard events. That path doesn't work. But the reason isn't quite what's commonly claimed, and it's worth getting precise, because it determines the countermeasure.
 
-| **#** | **事实** | **说明** |
+| **#** | **Fact** | **Explanation** |
 |----|----|----|
-| 一 | OS 层面能区分合成输入 | Windows 的低级钩子结构 KBDLLHOOKSTRUCT.flags 有 LLKHF_INJECTED（0x10）和 LLKHF_LOWER_IL_INJECTED（0x02）两个位，鼠标侧有对应的 LLMHF_INJECTED。任何应用装一个低级钩子读这个标志，就能区分真实输入和 SendInput。这是操作系统提供的能力，不是微信特有的 |
-| 二 | PostMessage 更不行 | 被 post 的消息完全绕过输入系统，不触发键盘钩子、不更新 GetKeyState。只要程序做多通道交叉验证就会发现不一致。微软自己推荐的替代顺序是：首选 UI Automation，其次 SendInput |
-| 三 | 这才是当前真正的坑 | 微信 4.1.5 之后放弃了 Windows 原生控件，改用自研渲染框架，并且会探测无障碍客户端：未检测到合法 UIA 客户端时只暴露一棵骨架 UI 树，只有检测到屏幕阅读器等工具接入才构建完整控件树。检测方式是看你的进程有没有正确引用 UIAutomationClient.dll 和 UIAutomationTypes.dll 并成功 attach |
+| One | The OS level can distinguish synthetic input | Windows' low-level hook structure KBDLLHOOKSTRUCT.flags has two bits, LLKHF_INJECTED (0x10) and LLKHF_LOWER_IL_INJECTED (0x02), with a corresponding LLMHF_INJECTED on the mouse side. Any application installing a low-level hook to read this flag can distinguish real input from SendInput. This is an OS-provided capability, not something specific to WeChat |
+| Two | PostMessage is even worse | Posted messages bypass the input system entirely — they don't trigger keyboard hooks or update GetKeyState. Any program doing multi-channel cross-validation will spot the inconsistency. Microsoft's own recommended fallback order is: UI Automation first, SendInput second |
+| Three | This is the real current gotcha | Since 4.1.5, WeChat abandoned native Windows controls in favor of a self-built rendering framework, and it probes for an accessibility client: when no legitimate UIA client is detected, it only exposes a skeleton UI tree — the full control tree only gets built once it detects something like a screen reader has attached. Detection works by checking whether your process correctly references UIAutomationClient.dll and UIAutomationTypes.dll and has successfully attached |
 
-所以准确的说法是：不是"微信过滤了 SendInput"，而是微信可以通过
-LLKHF_INJECTED 区分合成输入，且 4.1.5+ 默认对未识别的 UIA
-客户端隐藏控件树。因此坐标式合成输入不可靠，要走
-UIA，而且得先让微信认出你是无障碍客户端。公开的做法有三种：写一个最小 C#
-UIA 客户端正确引入那两个 DLL 并
-attach；先启动讲述人再跑脚本（兼容性差）；或在启动自动化框架前做进程级配置。
+So the precise way to put it is: it's not that "WeChat filters out SendInput" — it's that WeChat can distinguish synthetic input via
+LLKHF_INJECTED, and 4.1.5+ hides the control tree by default from any unrecognized UIA
+client. So coordinate-based synthetic input isn't reliable — you have to go through
+UIA, and you first have to get WeChat to recognize you as an accessibility client. There are three publicly known approaches: write a minimal C#
+UIA client that correctly references those two DLLs and
+attaches; launch Narrator first, then run your script (poor compatibility); or do process-level configuration before launching your automation framework.
 
-#### UIA 怎么用
+#### How to Use UIA
 
-UIA 的关键在于它不模拟输入，而是直接调用控件自己暴露的 provider
-接口——InvokePattern.Invoke()
-相当于替按钮执行它的"被点击"逻辑，全程不产生鼠标事件，所以前面那些检测都不适用。
+The key thing about UIA is that it doesn't simulate input at all — it calls the control's own exposed
+provider interface directly. InvokePattern.Invoke()
+is equivalent to executing the button's own "I was clicked" logic on its behalf, producing no mouse events the whole time, so none of the detection methods above apply.
 
-| **Pattern** | **用途** |
+| **Pattern** | **Use** |
 |----|----|
-| InvokePattern | 点击可触发控件，不产生鼠标事件。我们实测能稳定点小程序里的按钮和金刚区图标 |
-| ValuePattern | 直接读写控件值，填输入框比模拟打字可靠 |
-| LegacyIAccessiblePattern | 把 MSAA 属性暴露给 UIA。自绘和非标准控件的兜底，微信这类自研框架常常只剩这个 |
-| TextPattern | 读富文本内容和内嵌对象 |
-| VirtualizedItemPattern | 虚拟列表里还没渲染的项，长列表翻页时用得上 |
+| InvokePattern | Clicks a triggerable control, no mouse event produced. We've verified it reliably clicks buttons and grid icons in mini-programs |
+| ValuePattern | Reads/writes a control's value directly — more reliable than simulated typing for filling in input fields |
+| LegacyIAccessiblePattern | Exposes MSAA properties to UIA. A fallback for custom-drawn and non-standard controls — self-built frameworks like WeChat's often only expose this one |
+| TextPattern | Reads rich-text content and embedded objects |
+| VirtualizedItemPattern | Items in a virtualized list that haven't rendered yet — useful when paging through long lists |
 
-> # 1. 定位窗口 —— 用类名而不是标题，标题会随页面变
+> # 1. Locate the window — use the class name, not the title; the title changes per page
 >
 > win = auto.WindowControl(searchDepth=1,
 > ClassName='Chrome_WidgetWin_0')
 >
-> # 2. 等渲染 —— 小程序异步渲染，控件树会迟到
+> # 2. Wait for rendering — mini-programs render asynchronously, the control tree shows up late
 >
-> # 不要 sleep 固定时长，轮询目标控件出现
+> # Don't sleep for a fixed duration — poll until the target control appears
 >
-> btn = win.ButtonControl(Name='我的订单')
+> btn = win.ButtonControl(Name='My Orders')
 >
 > if not btn.Exists(maxSearchSeconds=8, searchIntervalSeconds=0.3):
 >
-> raise RuntimeError('控件未出现，页面可能未加载完')
+> raise RuntimeError('Control did not appear, page may not have finished loading')
 >
-> # 3. 点击 —— 用 InvokePattern，不要用坐标
+> # 3. Click — use InvokePattern, not coordinates
 >
 > btn.GetInvokePattern().Invoke()
 >
-> # 4. 输入 —— ValuePattern 比模拟键盘可靠
+> # 4. Input — ValuePattern is more reliable than simulated keyboard input
 >
-> win.EditControl(Name='搜索').GetValuePattern().SetValue('测试关键词')
+> win.EditControl(Name='Search').GetValuePattern().SetValue('test keyword')
 
-两条稳定性经验，都是修脚本修出来的：
+Two stability lessons, both learned the hard way by fixing broken scripts:
 
-**▪ 控件命名不稳定。** 同一个按钮在不同版本里 Name
-可能变。用相对定位加文本模糊匹配：先定位到稳定的父容器，再在其中按文本片段找。写死的绝对路径在小程序上基本活不过一次版本更新。
+**▪ Control naming isn't stable.** The same button's Name
+can change between versions. Use relative positioning plus fuzzy text matching: locate a stable parent container first, then search within it by a text fragment. A hardcoded absolute path in a mini-program basically never survives one version update.
 
-**▪ 分层查找，别从根遍历。** uiautomation
-从根搜一个深层控件可能要几百次匹配，逐层缩小 searchDepth
-只要几次。写脚本前先用库自带的 automation.py -t 0
-把控件树和每个控件支持的 Pattern 打出来。
+**▪ Search layer by layer, don't traverse from the root.** uiautomation
+searching from the root for a deeply nested control can take hundreds of matches; narrowing searchDepth
+layer by layer cuts that to a handful. Before writing a script, use the library's bundled automation.py -t 0
+to print out the control tree and which Patterns each control supports.
 
-#### 官方 SDK 为什么用不上
+#### Why the Official SDK Doesn't Work Here
 
-微信有官方自动化方案
-miniprogram-automator，能力不弱：控制跳转、读页面数据、触发元素事件、往
-AppService 注入代码、callWxMethod 调用任意 wx 接口、mockWxMethod 打桩。
+WeChat has an official automation solution,
+miniprogram-automator, and it's reasonably capable: controlling navigation, reading page data, triggering element events, injecting code into
+AppService, calling any wx interface via callWxMethod, and stubbing with mockWxMethod.
 
-但它要求 projectPath
-指向一个能在开发者工具里正常编译的小程序工程，也就是含
-project.config.json 的源码目录。所以测自己的小程序，官方 SDK
-是最佳方案；测别人的小程序只有 wxapkg，官方 SDK
-用不了，除非先反编译出可编译工程再导入，而那时 AppID
-不匹配，云函数、支付、授权类接口都会失败。腾讯还有个 Python 方案
-Minium，支持原生控件（授权弹窗、地图、相机），但同样从开发者工具驱动。
+But it requires projectPath
+to point at a mini-program project that compiles cleanly in the developer tools — i.e., a source directory containing
+project.config.json. So for testing your own mini-program, the official SDK
+is the best option; for testing someone else's, all you have is the wxapkg, and the official SDK
+won't work unless you decompile it into a compilable project and import that — and at that point the AppID
+won't match, so cloud functions, payment, and authorization-related endpoints will all fail. Tencent also has a Python option,
+Minium, which supports native controls (authorization popups, maps, camera), but it's likewise driven from the developer tools.
 
 ### 5.5 Electron
 
-本质是打包的 Chromium。找到安装目录里的 app.asar
-解开就是全部前端源码。格式极简，无压缩、支持随机访问：一个 8 字节的
-Pickle 头给出 header 长度，header 本身是一段 JSON，剩下是数据区。
+At its core, this is bundled Chromium. Find app.asar
+in the install directory and unpack it to get the full frontend source. The format is extremely simple, uncompressed, and supports random access: an 8-byte
+Pickle header gives the header length, the header itself is a chunk of JSON, and the rest is the data region.
 
 > npx asar list app.asar
 >
 > npx asar extract app.asar ./unpacked
 >
-> npx asar extract-file app.asar main.js # 只取一个
+> npx asar extract-file app.asar main.js # extract just one file
 >
-> # 注意 app.asar.unpacked/ 目录也要看：
+> # Also check the app.asar.unpacked/ directory:
 >
-> # 打包时用 --unpack 排除的文件放在这，原生 .node 模块一定在这里
+> # Files excluded at build time via --unpack go here — native .node modules are always here
 
-header JSON 里每个文件有 offset 和 size。offset 是字符串形式的
-UINT64——因为 JS 的 Number 是双精度浮点，安全整数上限
-2^53，大包会溢出，所以只能用字符串传。它还是相对数据区的偏移，算真实位置得加上头长度加
-header 长度。另外内容相同的文件只存一份，多个条目指向同一
-offset，统计文件数的时候别被骗了。
+Each file in the header JSON has an offset and size. offset is a
+UINT64 as a string — because JS's Number is double-precision float with a safe-integer ceiling of
+2^53, a large package would overflow it, so it has to be passed as a string. It's also relative to the data region, so computing the real position means adding the Pickle header length plus the
+header length. Also, files with identical content are only stored once, with multiple entries pointing at the same
+offset — don't be fooled when counting files.
 
-| **重打包之前先看 fuse**　Electron 从 16.0.0（macOS）和 30.0.0（Windows）起支持 ASAR 完整性校验，由 EnableEmbeddedAsarIntegrityValidation fuse 控制。开启后启动时校验 header 里的 hash，改过 app.asar 就强制终止进程。Electron Forge 7.4.0+ 和 Packager 18.3.1+ 会自动配置它。所以对现代 Electron 应用，"解包改 main.js 再打回去"这条路可能直接走不通。先跑 npx @electron/fuses read --app /path/to/App 看状态，再决定走哪条路。 |
+| **Check the fuses before repackaging**　Since 16.0.0 (macOS) and 30.0.0 (Windows), Electron supports ASAR integrity validation, controlled by the EnableEmbeddedAsarIntegrityValidation fuse. Once enabled, it checks the hash in the header at startup and force-terminates the process if app.asar has been modified. Electron Forge 7.4.0+ and Packager 18.3.1+ configure this automatically. So for a modern Electron app, the "unpack, modify main.js, repack" route may simply not work. Run npx @electron/fuses read --app /path/to/App first to check the state before deciding which path to take. |
 |----|
 
-#### 关注点一：webPreferences
+#### Focus Area One: webPreferences
 
-这部分是结构化程度很高的检索任务，模型做得很准。让它在解包产物里直接找
-BrowserWindow 的构造参数：
+This is a highly structured retrieval task, and the model does it very accurately. Have it find the
+BrowserWindow constructor arguments directly in the unpacked output:
 
-| **配置项** | **官方默认** | **为什么关心** |
+| **Setting** | **Official default** | **Why it matters** |
 |----|----|----|
-| contextIsolation | v12+ 默认开 | 关掉的话渲染进程 JS 能改写 preload 的对象和原型链，XSS 可直接升级为 RCE |
-| nodeIntegration | v5+ 默认关 | 开启则渲染进程可直接 require()。官方原话：任何加载远程内容的渲染器都绝不能启用 |
-| sandbox | v20+ 默认开 | 用操作系统能力限制渲染进程 |
-| webSecurity | 默认开 | 关掉等于同源策略失效 |
-| nodeIntegrationInSubFrames | 默认关 | 开启则 iframe 内也有 Node 能力，历史上出过 RCE |
-| preload | 空 | preload 拥有完整 Node API。即使 contextIsolation 开着，如果它通过 contextBridge 暴露了能转发任意 IPC channel 的接口，渲染进程 XSS 仍能打穿 |
+| contextIsolation | On by default since v12+ | If off, renderer-process JS can rewrite preload's objects and prototype chain — an XSS can escalate directly to RCE |
+| nodeIntegration | Off by default since v5+ | If on, the renderer process can call require() directly. The official docs' own words: any renderer that loads remote content must never enable this |
+| sandbox | On by default since v20+ | Uses OS-level capability restriction on the renderer process |
+| webSecurity | On by default | Turning it off is equivalent to disabling the same-origin policy |
+| nodeIntegrationInSubFrames | Off by default | If on, iframes also get Node capability — there's a history of RCEs from this |
+| preload | Empty | preload has the full Node API. Even with contextIsolation on, if it exposes an interface via contextBridge that can forward an arbitrary IPC channel, a renderer-process XSS can still punch through |
 
-最后那一行是本部分案例的根因，值得单独记住：**contextIsolation
-开着不等于安全，它只隔离了对象，没隔离能力。** 真正决定攻击面的是
-preload 暴露了什么、暴露给谁。
+That last row is the root cause of this part's case study, and worth remembering on its own: **contextIsolation
+being on does not mean secure — it only isolates objects, not capabilities.** What actually determines the attack surface is what
+preload exposes, and to whom.
 
-#### 关注点二：fuses
+#### Focus Area Two: Fuses
 
-fuses
-是打包时烧进二进制、签名前生效、烧完不可逆的开关。几个和测试直接相关的：
+Fuses
+are switches burned into the binary at build time, taking effect before signing, and irreversible once burned. A few directly relevant to testing:
 
-| **fuse**                      | **默认** | **含义**                         |
+| **Fuse**                      | **Default** | **Meaning**                         |
 |-------------------------------|----------|----------------------------------|
-| runAsNode                     | 启用     | 可被当成通用 Node 解释器滥用     |
-| enableCookieEncryption        | 禁用     | 也就是 cookie 存在明文 SQLite 里 |
-| enableNodeCliInspectArguments | 启用     | 这是下面能开 DevTools 的前提     |
-| onlyLoadAppFromAsar           | 禁用     | 堵不住"放个 app/ 目录覆盖"的路径 |
+| runAsNode                     | Enabled     | Can be abused as a general-purpose Node interpreter     |
+| enableCookieEncryption        | Disabled     | Meaning cookies sit in plaintext SQLite |
+| enableNodeCliInspectArguments | Enabled     | This is the precondition for enabling DevTools below     |
+| onlyLoadAppFromAsar           | Disabled     | Doesn't block the "drop an app/ directory to override it" path |
 
-#### 主进程是漏审角落
+#### The Main Process Is the Under-Audited Corner
 
-厂商常把敏感逻辑——本地加密、证书处理、自动更新、本地服务端口——放在主进程，因为"用户看不到"。这部分代码体积大、无人审查，是高产区。package.json
-的 main 字段指向的就是它。
+Vendors often put sensitive logic — local encryption, certificate handling, auto-update, local service ports — in the main process, on the assumption that "the user can't see it." This code tends to be large in volume and never reviewed, making it a high-yield area. package.json's
+main field is what points to it.
 
-> # 方法 A：不改包，加启动参数（首选，打包应用也有效）
+> # Method A: don't touch the package, add a launch flag (preferred, works on packaged apps too)
 >
 > open /Applications/YourApp.app --args --remote-debugging-port=8315 #
 > macOS
 >
 > YourApp.exe --remote-debugging-port=8315 # Windows
 >
-> # 然后浏览器开 http://localhost:8315/ 或 chrome://inspect
+> # Then open http://localhost:8315/ in a browser, or chrome://inspect
 >
-> # 主进程要用 V8 inspector，窗口内的 DevTools 只能调渲染进程
+> # The main process needs the V8 inspector — the in-window DevTools can only debug the renderer process
 >
 > electron --inspect=9229 your/app
 >
-> electron --inspect-brk=9229 your/app # 在第一行 JS 断下
+> electron --inspect-brk=9229 your/app # breaks on the first line of JS
 >
-> # 方法 B：走代理
+> # Method B: through a proxy
 >
 > electron ./app --proxy-server=127.0.0.1:8080
 > --ignore-certificate-errors
 >
-> # 方法 C：electron-inject，连调试端口后用 CDP 注入，不改包
+> # Method C: electron-inject, connects to the debug port and injects via CDP, doesn't touch the package
 >
 > pip install electron-inject
 >
-> electron_inject -d -t 60 - /path/to/application # -d 启用 F12 / F5
+> electron_inject -d -t 60 - /path/to/application # -d enables F12 / F5
 
-要让 Electron 应用被 UIA 看见，启动时必须加
---force-renderer-accessibility。这条对 Chrome 也一样。
+For an Electron app to be visible to UIA, you must add
+--force-renderer-accessibility at launch. Same requirement applies to Chrome.
 
 #### Electronegativity
 
-Doyensec 出的静态检查工具，基于 AST 和 DOM 解析找安全相关配置，共 38
-项检查。可以直接吃 .asar
-文件，不用先解包。项目已不再积极维护，官方指向商业版。
+A static-analysis tool from Doyensec that parses ASTs and the DOM to find security-relevant configuration, covering 38
+checks in total. It can consume .asar
+files directly, no need to unpack first. The project is no longer actively maintained, and the official page points to a commercial version.
 
 > npm install @doyensec/electronegativity -g
 >
-> electronegativity -i app.asar -o out.sarif # SARIF 可接 CI / GitHub
+> electronegativity -i app.asar -o out.sarif # SARIF plugs into CI / GitHub
 > code scanning
 >
 > electronegativity -i /path/to/app -s HIGH -c HIGH
 
-输出里带 _GLOBAL_ 的是跨文件关联检查，比如
-HTTP_RESOURCES_WITH_NODE_INTEGRATION_GLOBAL_CHECK 要"加载 HTTP
-资源"和"开了
-nodeIntegration"两个事实同时成立才报。这类才是高价值发现，让模型读 SARIF
-时优先看它们。
+Anything in the output tagged _GLOBAL_ is a cross-file correlated check — for example,
+HTTP_RESOURCES_WITH_NODE_INTEGRATION_GLOBAL_CHECK only fires when both "loads HTTP
+resources" and "has
+nodeIntegration enabled" hold true at the same time. These are the high-value findings — have the model prioritize them when reading the SARIF.
 
-### 5.6 MCP 与优缺点
+### 5.6 MCP and Trade-offs
 
-小程序方向已经有几个现成的 MCP，都是个人项目不是官方：wxapkg-mcp（7
-个工具，从 list_wechat_apps 发现 AppID 到 decrypt_and_extract_appid
-一步到位）、MCP-WEDECODEMCP（基于 wedecode，scan_local_miniapps →
-decompile_scanned_miniapp → read_output_file 的对话式流程）、e0e1-wx（带
-MCP 的
-GUI，包监控、自动反编译、CDP、云函数扫描，配置里列了覆盖的小程序版本号）。
+The mini-program direction already has a few ready-made MCPs, all personal projects, not official: wxapkg-mcp (7
+tools, one-shot from list_wechat_apps discovering the AppID to
+decrypt_and_extract_appid), MCP-WEDECODEMCP (built on wedecode, a conversational flow of scan_local_miniapps →
+decompile_scanned_miniapp → read_output_file), and e0e1-wx (a
+GUI with an
+MCP built in — package monitoring, auto-decompilation, CDP, cloud-function scanning, with covered mini-program versions listed in its config).
 
-Electron 这边没有专用 MCP。可行的组合是 asar extract 落盘，用文件系统类
-MCP 或直接让 Claude Code 读目录，再把 Electronegativity 的 SARIF
-喂给模型做风险排序。5.7 那个案例走的就是这条路，没用任何专用工具。
+Electron doesn't have a dedicated MCP. A workable combination is: asar extract to disk, use a filesystem-style
+MCP or just have Claude Code read the directory directly, then feed Electronegativity's SARIF
+to the model for risk triage. That's exactly the path the case study in 5.7 takes, with no dedicated tooling at all.
 
-| **优点** | **缺点** |
+| **Advantages** | **Disadvantages** |
 |----|----|
-| 解包即白盒，JS 源码直接可读可喂模型 | 自动化只有 UIA 一条路，还得先激活无障碍模式 |
-| 客户端鉴权普遍偏弱，越权和信息泄露高发 | 解包脚本强依赖微信版本，4.1.x 之后的变更没有公开文档 |
-| 小程序是标准 CA 校验不是 pinning，证书进系统根就能抓 | UIA 控件树随版本漂移，脚本维护成本不低 |
-| 环境成本比 APP 低得多，不需要 root 设备 | 应用层加密签名很常见，抓到包也读不懂 |
-| Electron 的配置审计是结构化任务，模型准确率高 | Electron 完整性校验会让重打包路线直接失效 |
+| Unpacking is white-box by nature — JS source is directly readable and feedable to the model | Automation has only one path, UIA, and it requires activating accessibility mode first |
+| Client-side auth tends to be weak across the board — broken access control and info leaks are common | Unpacking scripts are strongly WeChat-version-dependent, and changes since 4.1.x have no public documentation |
+| Mini-programs use standard CA validation, not pinning — get the cert into the system root and you can capture traffic | The UIA control tree drifts between versions, so scripts aren't cheap to maintain |
+| Environment cost is much lower than APP — no rooted device needed | Application-layer encryption/signing is common, so a captured packet still may not be readable |
+| Auditing Electron config is a structured task the model handles accurately | Electron's integrity validation can shut down the repackaging route entirely |
 
-## 第六部分：APP 端
+## Part Six: APP Side
 
 
 ------------------------------------------------------------------------
 
-攻击面最大的一种：本地存储、导出组件、WebView、原生
-so、通信加密全都能碰。代价是环境最重，一台 root
-的安卓机或模拟器是起步配置。也正因为如此，建议放在最后做。
+The largest attack surface of the three: local storage, exported components, WebView, native
+.so libraries, and communication encryption are all in play. The cost is the heaviest environment — a rooted
+Android device or emulator is the baseline requirement. Precisely because of that, it's worth doing this one last.
 
-| **小节** | **讲什么**                                         |
+| **Section** | **What it covers**                                         |
 |----------|----------------------------------------------------|
-| 6.1      | 静态：jadx 和 apktool 各管一段                     |
-| 6.2      | MCP：xref 才是模型要的东西                         |
-| 6.3      | Frida：server 还是 gadget                          |
-| 6.4      | 抓包三件事：CA、NSC、pinning                       |
-| 6.5      | 加固与脱壳                                         |
-| 6.6      | 攻击面清单                                         |
-| 6.7      | 闭环、优缺点与三形态横评                           |
+| 6.1      | Static: jadx and apktool each cover half                     |
+| 6.2      | MCP: xref is what the model actually needs                         |
+| 6.3      | Frida: server or gadget                          |
+| 6.4      | Three things about traffic capture: CA, NSC, pinning                       |
+| 6.5      | Hardening and unpacking                                         |
+| 6.6      | Attack-surface checklist                                         |
+| 6.7      | Closing the loop, trade-offs, and a comparison across all three form factors                           |
 
-### 6.1 静态：jadx 和 apktool 各管一段
+### 6.1 Static: jadx and apktool Each Cover Half
 
-两个都要跑，分工很清楚：jadx 用来读懂和定位，apktool 用来改和回编。
+Run both — the division of labor is clean: jadx is for reading and understanding, apktool is for modifying and rebuilding.
 
 |  | **jadx** | **apktool** |
 |----|----|----|
-| dex 产物 | Java 伪代码，可读性高，可能失真或丢方法体 | smali，一比一忠实，可改可回编 |
-| 能否重打包 | 不能 | 能，apktool b 之后必须重新签名 |
-| 典型用途 | 读逻辑、找类名方法名，喂给模型和 Frida | 改 network_security_config.xml、改 manifest、注入 gadget、patch smali |
+| dex output | Java-like pseudocode, highly readable, may be inaccurate or drop method bodies | smali, byte-for-byte faithful, modifiable and rebuildable |
+| Can it repackage | No | Yes — must be re-signed after apktool b |
+| Typical use | Reading logic, finding class/method names, feeding the model and Frida | Modifying network_security_config.xml, editing the manifest, injecting a gadget, patching smali |
 
-#### 先花十秒判断有没有加固
+#### Spend Ten Seconds First Checking for Hardening
 
-不要一上来就等全量反编译。先只出资源，或者直接 unzip -l 看 lib/ 和
-assets/
-的文件名。主流商业加固都有明显的文件名特征（libDexHelper.so、ijiami.*、libshell-*.so、libjiagu*.so、libxloader.so、libegis.so
-这类）。识别出加固就直接跳到 6.5，别浪费半小时。
+Don't jump straight into waiting on a full decompile. First dump resources only, or just unzip -l to check the filenames in lib/ and
+assets/. The mainstream commercial hardening/packing solutions all have distinctive filename signatures (things like libDexHelper.so, ijiami.*, libshell-*.so, libjiagu*.so, libxloader.so, libegis.so
+). If you spot hardening, jump straight to 6.5 — don't waste half an hour.
 
-> jadx -s -d out_res target.apk # 只出资源 + manifest，秒级
+> jadx -s -d out_res target.apk # resources + manifest only, seconds
 >
 > unzip -l target.apk | grep -E 'lib/|assets/'
 
-#### jadx 的几个关键 flag
+#### A Few Key jadx Flags
 
-| **flag** | **为什么要加** |
+| **Flag** | **Why add it** |
 |----|----|
-| --show-bad-code | 混淆或加固包必开。jadx 反编译失败的方法体默认直接丢弃，不加这个你看到的是一片空方法，还以为人家没写 |
-| --deobf | 对短名混淆做重命名。配 --deobf-cfg-file 存映射，下次复用，也能和队友对齐符号 |
-| --no-inline-methods | 准备写 Frida hook 时加。内联之后的方法名和运行时对不上，hook 点会找不到 |
-| --no-imports | 全写完整包名。对模型友好，消除同名类的歧义 |
-| --output-format json | 结构化输出，进 LLM 管道比 Java 文本好处理 |
-| --call-graph json | 导出全应用调用图。做调用链分析时这是理想输入 |
-| --single-class | 只反编译一个类。模型说"我要看这个类"时用它，比整包快几个数量级 |
+| --show-bad-code | A must for obfuscated or hardened packages. jadx drops method bodies it fails to decompile by default — without this you see a bunch of empty methods and might think the developer never wrote anything there |
+| --deobf | Renames short obfuscated identifiers. Pair with --deobf-cfg-file to save the mapping for reuse next time, and to stay in sync with teammates on symbol names |
+| --no-inline-methods | Add this when preparing to write a Frida hook. After inlining, method names no longer match runtime, and your hook point won't be found |
+| --no-imports | Writes out full package names everywhere. Model-friendly — eliminates ambiguity from same-named classes |
+| --output-format json | Structured output — easier to feed into an LLM pipeline than raw Java text |
+| --call-graph json | Exports the whole app's call graph. The ideal input when doing call-chain analysis |
+| --single-class | Decompiles just one class. Use it when the model says "I want to look at this class" — orders of magnitude faster than the whole package |
 
-> # 加固 / 混淆包的实战组合
+> # A practical combo for hardened / obfuscated packages
 >
 > jadx -d out --show-bad-code --deobf --no-imports --no-inline-methods
 > -j 8 target.apk
 
-jadx 官方明确声明：对混淆或加固的 APK
-不保证能完整反编译。这是官方立场不是社区吐槽，规划时间时按这个预期算。
+jadx's own docs are explicit: for obfuscated or hardened APKs,
+it does not guarantee a complete decompile. That's the official stance, not community griping — plan your time budget around that expectation.
 
-#### MobSF 当基线扫描器
+#### Using MobSF as a Baseline Scanner
 
-它的价值是筛选不是结论。一键出基线报告，让模型从报告里挑值得深挖的点，比让它从零开始通读省很多。Docker
-起，静态分析不需要连设备：
+Its value is triage, not conclusions. One command gets you a baseline report, and having the model pick what's worth digging into from that report saves a lot compared to having it read everything from scratch. Spin it up with
+Docker — static analysis doesn't need a connected device:
 
 > docker run -it --rm -p 8000:8000
 > opensecurity/mobile-security-framework-mobsf:latest
 >
-> # 默认 mobsf/mobsf，API key 在实例自己的 /api_docs 页面
+> # default mobsf/mobsf, the API key is on the instance's own /api_docs page
 >
 > curl -F 'file=@target.apk' http://localhost:8000/api/v1/upload -H
 > "Authorization: KEY"
@@ -1853,71 +1843,71 @@ jadx 官方明确声明：对混淆或加固的 APK
 > curl -X POST http://localhost:8000/api/v1/report_json --data
 > "hash=<hash>" -H "Authorization: KEY"
 
-动态分析要连一台 adb 设备，官方说明只支持到 Android 11（API 30），12
-以上不支持。另外它把两件麻烦事 API
-化了，接自动化管道时很省事：/api/v1/android/root_ca（装/卸系统 CA）和
-/api/v1/android/global_proxy（设/取消全局代理）。还有一组
-/api/v1/frida/* 端点，可以把 MobSF 当 Frida 编排器用。
+Dynamic analysis needs a connected adb device — the official docs state support only up to Android 11 (API 30), not 12
+and above. It also turns two annoying tasks into
+APIs, which is very convenient when hooking up an automated pipeline: /api/v1/android/root_ca (install/remove system CA) and
+/api/v1/android/global_proxy (set/cancel global proxy). There's also a set of
+/api/v1/frida/* endpoints, which lets you use MobSF as a Frida orchestrator.
 
-### 6.2 MCP：xref 才是模型要的东西
+### 6.2 MCP: xref Is What the Model Actually Needs
 
-这条链上最成熟的一块。jadx-ai-mcp 是跑在 jadx-gui 里的 Java
-插件（默认端口 8650），jadx-mcp-server 是 Python 侧的 MCP 服务器（默认
-8651）连过去。
+The most mature piece in this chain. jadx-ai-mcp is a Java
+plugin that runs inside jadx-gui (default port 8650), and jadx-mcp-server is the Python-side MCP server (default
+8651) that connects to it.
 
 > jadx plugins --install "github:zinja-coder:jadx-ai-mcp"
 >
 > uv run jadx_mcp_server.py --http --jadx-host 127.0.0.1 --jadx-port
 > 8650
 
-暴露三十多个工具，按价值排：
+It exposes thirty-plus tools, ranked by value:
 
-| **组** | **工具** | **价值** |
+| **Group** | **Tools** | **Value** |
 |----|----|----|
-| 交叉引用 | xrefs_to_class()、xrefs_to_method()、xrefs_to_field() | 最值钱的一组。这给了模型做污点追踪的能力——从一个敏感字段反向找所有引用点。纯 grep 做不到，因为 grep 不懂继承和重载 |
-| 取代码 | get_class_source()、get_method_by_name()、get_methods_of_class()、get_fields_of_class() | 配合 3.4 的索引策略，模型先看清单再决定读哪个方法 |
-| Android 专用 | get_android_manifest()、get_main_activity_class()、get_manifest_component()、get_strings() | 入口点 |
-| 字节码 | get_smali_of_class() | 反编译失败时的兜底，Java 伪代码出不来时还能看 smali |
+| Cross-references | xrefs_to_class(), xrefs_to_method(), xrefs_to_field() | The single most valuable group. This gives the model the ability to do taint tracing — working backward from a sensitive field to find every place that references it. Plain grep can't do this, because grep doesn't understand inheritance and overloading |
+| Getting code | get_class_source(), get_method_by_name(), get_methods_of_class(), get_fields_of_class() | Paired with the indexing strategy in 3.4 — the model looks at the listing first, then decides which method to read |
+| Android-specific | get_android_manifest(), get_main_activity_class(), get_manifest_component(), get_strings() | Entry points |
+| Bytecode | get_smali_of_class() | The fallback when decompilation fails — you can still read smali when Java pseudocode doesn't come out |
 
-设计上有个关键点：它和运行中的 jadx-gui
-实例通信，不是重新跑一遍反编译。好处是有
-xref、有已加载的符号表；坏处是要先人工把 APK 在 GUI
-里打开，而且项目自述还在早期阶段，会崩。
+There's a key design point: it talks to a running jadx-gui
+instance, rather than re-running decompilation itself. The upside is you get
+xref and an already-loaded symbol table; the downside is you have to manually open the APK in the
+GUI first, and the project's own README says it's still early-stage and does crash.
 
-同一作者还有 apktool-mcp-server，13 个工具。注意它包含
-modify_smali_file() 和 build_apk()，意味着模型可以直接改 smali
-并重打包。接入时要在权限层面做约束，别让它无声地改了你的样本。
+The same author also has apktool-mcp-server, with 13 tools. Note that it includes
+modify_smali_file() and build_apk(), meaning the model can directly modify smali
+and repackage. When wiring this up, put permission-level constraints around it — don't let it silently modify your sample.
 
-### 6.3 Frida：server 还是 gadget
+### 6.3 Frida: Server or Gadget
 
-静态分析只能告诉你"代码里有这么一段判断"，不能告诉你"它在运行时走没走到、参数是什么"。APP
-里大量逻辑有多条分支、被开关控制，或者干脆是废弃代码。Frida
-把静态的"可能"变成运行时的"确实"，这一步是 APP 形态误报率的主要控制点。
+Static analysis can only tell you "there's a check like this in the code" — it can't tell you "did it actually execute at runtime, and with what parameters." An APP
+has a lot of logic gated behind multiple branches, feature flags, or that's flat-out dead code. Frida
+turns a static "maybe" into a runtime "actually did" — this step is the main lever for controlling false-positive rate on the APP form factor.
 
 |  | **frida-server** | **frida-gadget** |
 |----|----|----|
-| 形态 | 设备上的独立进程，通常以 root 跑 | 共享库，被加载进目标进程内部 |
-| 前提 | 需要 root | 不需要 root，但需要改 APK 或 LD_PRELOAD |
-| 进程视角 | 可 attach / spawn 任意进程 | 进程列表里只有一条 Gadget |
-| 适用 | 有 root 的测试机，效率最高 | 无 root 设备，或需要规避端口与进程特征检测 |
+| Form | An independent process on the device, usually run as root | A shared library, loaded inside the target process |
+| Precondition | Needs root | Doesn't need root, but needs the APK modified or LD_PRELOAD |
+| Process visibility | Can attach / spawn any process | Only one "Gadget" entry shows in the process list |
+| Fits | Rooted test devices — most efficient | Non-rooted devices, or when you need to evade port/process fingerprint detection |
 
-Gadget 有四种交互模式，其中 Script
-模式对自动化最有用：自动加载并执行一个独立 JS 文件，不需要 host
-端连接。Listen 是默认模式，会阻塞直到有人 attach。
+Gadget has four interaction modes, of which Script
+mode is the most useful for automation: it auto-loads and executes a standalone JS file, with no
+host-side connection needed. Listen is the default mode, and it blocks until something attaches.
 
-| **一个非常容易踩的命名规则**　Gadget 的配置文件名等于二进制名加 .config。但在 Android 上，对 non-debuggable 应用，配置文件名必须以 lib 开头、以 .so 结尾，因为 APK 里只有 lib/ 下的 .so 会被解包。名字起错了表现是"配置完全不生效"，没有任何报错，很难排查。 |
+| **A very easy naming rule to trip on**　Gadget's config filename equals the binary's name plus .config. But on Android, for a non-debuggable app, the config filename must start with lib and end with .so, because only .so files under lib/ get unpacked from the APK. Getting the name wrong shows up as "the config just doesn't take effect at all," with no error whatsoever — very hard to debug. |
 |----|
 
-#### 常用 API
+#### Commonly Used APIs
 
-Java 层，前两个是日常，后两个是加固包的救命稻草：
+Java-layer — the first two are everyday tools, the last two are lifesavers for hardened packages:
 
-| **API** | **用途** |
+| **API** | **Use** |
 |----|----|
-| Java.use(name) | 取类 wrapper，hook 方法或 new 实例。最常用 |
-| Java.choose(name, cb) | 枚举堆上的活实例。用来拿已存在对象的字段值，比如已初始化的 client、已解密的配置对象。静态分析拿不到这些 |
-| Java.enumerateLoadedClasses() | 列出所有已加载类名。脱壳后确认 dex 真的加载进来了、以及定位混淆类，第一手段 |
-| Java.enumerateClassLoaders() | 加固包必用。壳的类和真实 dex 往往在不同 ClassLoader 里，Java.use 找不到时先把 Java.classFactory.loader 换成目标 loader |
+| Java.use(name) | Gets a class wrapper, for hooking methods or instantiating objects. The most commonly used |
+| Java.choose(name, cb) | Enumerates live instances on the heap. Used to get field values of objects that already exist — an already-initialized client, an already-decrypted config object. Static analysis can't get at these |
+| Java.enumerateLoadedClasses() | Lists all loaded class names. The first tool for confirming the dex actually loaded after unpacking, and for locating obfuscated classes |
+| Java.enumerateClassLoaders() | Essential for hardened packages. The shell's classes and the real dex often sit in different ClassLoaders — when Java.use can't find something, swap Java.classFactory.loader to the target loader first |
 
 > const libc = Process.getModuleByName('libc.so');
 >
@@ -1930,74 +1920,74 @@ Java 层，前两个是日常，后两个是加固包的救命稻草：
 >
 > });
 >
-> // 算 so 内偏移的 hook 点
+> // computing an offset-within-.so hook point
 >
 > const base = Module.findBaseAddress('libnative.so');
 >
 > Interceptor.attach(base.add(0x1234), { ... });
 >
-> // 脚本用 send() 输出结构化 JSON，host 侧收集 —— 这是接模型的标准接法
+> // have the script output structured JSON via send(), collected on the host side — this is the standard way to connect it to the model
 >
 > send({ type: 'sign', input: argStr, output: retStr });
 
-新版 Frida 官方示例已从 Module.findExportByName() 改用
-Process.getModuleByName().getExportByName()，过渡期两种都能用。写脚本前先确认目标设备上的
-frida 版本——这是"从网上抄的脚本跑不起来"最常见的原因，没有之一。
+The newer official Frida examples have moved from Module.findExportByName() to
+Process.getModuleByName().getExportByName() — both still work during the transition period. Before writing a script, confirm the
+frida version on the target device first — this is, without exception, the most common reason "a script copied from the internet doesn't run."
 
-#### 为什么 Frida 只能改方法边界
+#### Why Frida Can Only Modify Method Boundaries
 
-这一条直接决定了第七部分那个 APP 提问模板的形状，值得说清楚机制。
+This point directly shapes the APP prompt template in Part Seven, and it's worth explaining the mechanism clearly.
 
-Java 层的 hook 是替换方法实现：Frida 拿到目标方法的
-ArtMethod，把入口指向自己的桥接代码，原方法整体被接管。Native 层的
-Interceptor.attach 是在函数入口处改指令、跳到 trampoline，onEnter /
+A Java-layer hook works by replacing the method implementation: Frida gets the target method's
+ArtMethod and points its entry at its own bridge code, taking over the original method wholesale. The native-layer
+Interceptor.attach modifies instructions at the function entry point and jumps to a trampoline, with onEnter /
 onLeave
-分别在进入和返回时插入。两种机制的粒度都是**一次调用的边界**——参数进来、返回值出去。
+inserted at entry and return respectively. Both mechanisms operate at the granularity of **a single call's boundary** — parameters coming in, return value going out.
 
-方法内部的某一行 if，既不是入口也不是出口，Frida
-没有插入点。想改它只能去改指令，那已经是 patch 而不是 hook 了。
+A given if statement somewhere inside a method's body is neither an entry point nor an exit point — Frida
+has no insertion point there. Modifying it means patching instructions directly, which is no longer a hook, it's a patch.
 
-所以找 hook
-点时要找方法边界：理想的点是一个返回布尔值的独立校验方法，而不是嵌在大函数中间的一个
-if。让模型读 jadx 输出时，必须明确要求输出**类全名 + 方法名 + 参数签名 +
-overload + 返回类型**，而不是"这里有个校验"。前者可以直接生成
+So when looking for a hook
+point, look for a method boundary: the ideal target is a standalone validation method that returns a boolean, not an
+if buried in the middle of a large function. When having the model read jadx output, explicitly require it to output the **fully-qualified class name + method name + parameter signature +
+overload + return type**, not "there's a check here." The former lets you generate
 Java.use(...).method.overload(...).implementation =
-...，后者你还得自己回去翻一遍。
+... directly; the latter means you have to go back and dig through it yourself.
 
-#### JNI 动态注册的定位
+#### Locating JNI Dynamic Registration
 
-很多商业 APP 的 native 方法通过 RegisterNatives 动态注册，jadx 里只看到
-native 声明、看不到实现地址。两个工具解决这件事：
+Many commercial APPs register native methods dynamically via RegisterNatives, so jadx only shows you the
+native declaration, not the implementation address. Two tools handle this:
 
-**▪** hook
-RegisterNatives（lasting-yang/frida_hook_libart）。输出直接给出 so
-内偏移，拿去 Ghidra 或 IDA 定位。
+**▪** Hook
+RegisterNatives (lasting-yang/frida_hook_libart). Its output gives you the offset within the .so
+directly, which you can then take to Ghidra or IDA to locate.
 
-**▪** jnitrace。jnitrace -l libnative-lib.so <pkg>，显示 jni.h
-里的方法名、参数、buffer hexdump、返回值。-o 出
-JSON，这点对接模型很关键，可以直接进索引。
+**▪** jnitrace. jnitrace -l libnative-lib.so <pkg> shows the method names, parameters, buffer hexdump, and return values from jni.h
+. -o outputs
+JSON — important for connecting it to the model, since it can go straight into the index.
 
-### 6.4 抓包三件事：CA、NSC、pinning
+### 6.4 Three Things About Traffic Capture: CA, NSC, Pinning
 
-这三件事经常被混为一谈，但它们是三个独立的问题，解法也不同。
+These three get conflated constantly, but they're three independent problems, and the fixes differ too.
 
-| **问题** | **表现** | **解法** |
+| **Problem** | **Symptom** | **Fix** |
 |----|----|----|
-| ① 系统不信任你的 CA | Android 7+，targetSdk ≥ 24 的应用默认不信任用户添加的 CA。官方原话是 by design | 把 CA 弄进 system 信任库 |
-| ② 应用自己配了 NSC | 应用用 <trust-anchors> 精确控制信任哪些源，用 <pin-set> 做证书固定。<debug-overrides> 只在 android:debuggable="true" 时生效 | 改 NSC 重打包，或 Frida |
-| ③ 应用在代码里做 pinning | OkHttp 或自研实现。装系统 CA 解决不了 | 只能靠 Frida。NCC 那份报告里原话很直接：有 SSL Pinning 的应用无论如何都拦截不了 |
+| ① The system doesn't trust your CA | On Android 7+, apps with targetSdk ≥ 24 don't trust user-added CAs by default. The official wording is "by design" | Get the CA into the system trust store |
+| ② The app configures its own NSC | The app uses <trust-anchors> to precisely control which sources it trusts, and <pin-set> for certificate pinning. <debug-overrides> only takes effect when android:debuggable="true" | Modify the NSC and repackage, or use Frida |
+| ③ The app does pinning in code | OkHttp or a homegrown implementation. Installing a system CA doesn't fix this | Frida is the only option. That NCC report puts it bluntly: an app with SSL pinning cannot be intercepted no matter what you do |
 
-| **Android 14 改了信任库的位置**　从 Android 14 起，CA 校验不再读 /system/etc/security/cacerts，改走 Conscrypt APEX 模块，从 /apex/com.android.conscrypt/cacerts 读。老的 Magisk CA 模块在 Android 14 上直接失效。对应的新方案（NCC 的 ConscryptTrustUserCerts、TrustAnyCert 等）做法是把证书 mount 进 Conscrypt 的 namespace，并以 late_start service 模式运行——这个时序很关键，必须确保 Zygote 起来之后再 mount，否则应用进程 fork 出来的时候看到的还是旧的挂载视图。测试机的系统版本要记进 memory/tools.md，这是最容易在新目标上卡住半天的地方。 |
+| **Android 14 moved the trust store**　Starting with Android 14, CA validation no longer reads /system/etc/security/cacerts — it goes through the Conscrypt APEX module instead, reading from /apex/com.android.conscrypt/cacerts. The old Magisk CA module simply stops working on Android 14. The corresponding new approaches (NCC's ConscryptTrustUserCerts, TrustAnyCert, etc.) work by mounting the certificate into Conscrypt's namespace and running as a late_start service — the timing here matters a lot, since the mount must happen after Zygote comes up, or the app process will still see the old mount view when it forks. Log the test device's OS version into memory/tools.md — this is the single easiest place to get stuck for half a day on a new target. |
 |----|
 
-#### 改 NSC 这条路的代价
+#### The Cost of the Modify-NSC-and-Repackage Route
 
 > apktool d -f -o work target.apk
 >
-> # 1. 编辑 work/res/xml/network_security_config.xml，加 <certificates
+> # 1. Edit work/res/xml/network_security_config.xml, add <certificates
 > src="user" />
 >
-> # 2. 在 <application> 上加
+> # 2. Add to <application>:
 > android:networkSecurityConfig="@xml/network_security_config"
 >
 > apktool b work -o patched.apk
@@ -2006,118 +1996,119 @@ JSON，这点对接模型很关键，可以直接进索引。
 >
 > apksigner sign --ks my.keystore aligned.apk
 
-重打包会破坏原签名，代价是：触发签名校验类防护、掉 Play Integrity、App
-Links 的 assetlinks.json 失配。优先选装系统 CA，只有在无 root
-设备上才走这条。
+Repackaging breaks the original signature, at the cost of: triggering signature-verification defenses, losing Play Integrity, and breaking App
+Links' assetlinks.json match. Prefer installing a system CA — only fall back to this route on a non-rootable
+device.
 
-#### objection 到底 hook 了什么
+#### What objection Is Actually Hooking
 
-android sslpinning disable 不是"装证书"，是用 Frida
-把校验函数改成恒真或空实现。它打七个点，值得知道，因为遇到打不过的情况你得知道漏了哪层：
+android sslpinning disable isn't "installing a certificate" — it's using Frida
+to turn the validation function into an always-true or no-op implementation. It hits seven points, worth knowing, because when it doesn't work you need to know which layer you're missing:
 
-| **hook 点** | **做什么** |
+| **Hook point** | **What it does** |
 |----|----|
-| javax.net.ssl.SSLContext.init() | 换掉信任源，塞一个空实现的 TrustManager |
-| okhttp3.CertificatePinner.check() 及 check\$okhttp() | 跳过 pin 比对，直接返回不抛异常 |
-| ...conscrypt.TrustManagerImpl.verifyChain() | Android 7+ 的关键点，跳过链校验，原样返回传入的 chain |
-| ...conscrypt.TrustManagerImpl.checkTrustedRecursive() | 返回空列表 |
-| Appcelerator / PhoneGap 插件的对应方法 | 跨平台框架的专用路径 |
+| javax.net.ssl.SSLContext.init() | Swaps out the trust source, plugs in a no-op TrustManager |
+| okhttp3.CertificatePinner.check() and check\$okhttp() | Skips the pin comparison, returns directly without throwing |
+| ...conscrypt.TrustManagerImpl.verifyChain() | The key point on Android 7+, skips chain validation, returns the passed-in chain as-is |
+| ...conscrypt.TrustManagerImpl.checkTrustedRecursive() | Returns an empty list |
+| The corresponding methods in Appcelerator / PhoneGap plugins | Dedicated paths for cross-platform frameworks |
 
-三层覆盖不同实现路径：换信任源、跳过链校验、跳过 pin
-比对，所以要全打。工程化程度更高的是 httptoolkit
-那套脚本，它的设计有两点值得学：native-tls-hook.js 改 BoringSSL
-让它信任你配置的证书，而不是整个关掉校验（不容易触发应用的异常分支）；以及一个
-fallback 脚本，检测到证书校验失败时自动为混淆过的未知 pinning
-实现生成补丁。
+The three layers cover different implementation paths — swapping the trust source, skipping chain validation, skipping pin
+comparison — so all of them need to be hit. A more engineered approach is httptoolkit's
+set of scripts, and two things about its design are worth learning from: native-tls-hook.js modifies BoringSSL
+to trust the certificate you've configured, rather than disabling validation entirely (less likely to trigger the app's error-handling branches); and a
+fallback script that, when it detects a certificate-validation failure, automatically generates a patch for an obfuscated, unrecognized
+pinning implementation.
 
-Flutter 走 BoringSSL 不走系统 CA，必须单独处理。
+Flutter goes through BoringSSL rather than the system CA, and needs to be handled separately.
 
-### 6.5 加固与脱壳
+### 6.5 Hardening and Unpacking
 
-先分清代际，因为每一代的解法完全不同，投入产出也差很远。
+Identify the generation first, because the approach differs completely by generation, and the effort-to-payoff ratio varies a lot too.
 
-| **代际** | **做了什么** | **脱壳路线** | **投入** |
+| **Generation** | **What it does** | **Unpacking route** | **Effort** |
 |----|----|----|----|
-| 一代 · DEX 整体加壳 | 完整 DEX 加密，只留壳应用 | 内存搜索 / 文件落地即可 | 低 |
-| 二代 · 函数抽取 | 方法体被抽走，运行时按需回填 | 抓解密时机：主动调用逼它回填，再在 ART 层截获 | 中 |
-| 三代 a · VMP | 自定义指令集 + 自定义解释器 | 要找到解释器，还原指令映射关系 | 极高，通常不在授权测试的时间窗内 |
-| 三代 b · Dex2C | Java 逻辑翻译成 C | 基本无法恢复为 Java，重点转向 native 层，看 jni.h 相关调用 | 高，这时动态分析比静态划算得多 |
+| 1st gen · Whole-DEX packing | Full DEX encrypted, leaving only a shell app | Memory search / dump to disk is enough | Low |
+| 2nd gen · Method extraction | Method bodies are stripped out, filled back in at runtime on demand | Catch the decryption moment: actively call methods to force them to fill back in, then intercept at the ART layer | Medium |
+| 3rd gen a · VMP | Custom instruction set + custom interpreter | Have to find the interpreter, recover the instruction mapping | Extremely high, usually outside an authorized-testing time window | 
+| 3rd gen b · Dex2C | Java logic translated to C | Essentially unrecoverable back to Java — focus shifts to the native layer, looking at jni.h-related calls | High, and at this point dynamic analysis is far more worthwhile than static |
 
-判断代际的第一步是看 6.1 那个文件名特征，第二步是脱完之后用
---show-bad-code 看方法体是不是还空着。
+The first step to identifying the generation is checking the filename signatures from 6.1
+; the second is, after unpacking, using
+--show-bad-code to see whether method bodies are still empty.
 
-| **工具** | **要 root** | **原理** | **说明** |
+| **Tool** | **Needs root** | **Mechanism** | **Notes** |
 |----|----|----|----|
-| frida-dexdump | 是 | 内存搜索 DEX 签名 | -d 深度扫描能找到 header 被破坏或碎片化的 DEX。仓库 2023 年 7 月已归档，新版环境可能要用社区 fork |
-| BlackDex | 否 | DexFile cookie 提取 | 普通消费设备和模拟器都能跑，支持 Android 5.0‒12。deep 模式尝试回填被抽取的方法指令，但可能耗时数分钟且提高失败率 |
-| FART | 要刷机 | hook 解释器 + 主动调用 | patch ART 源码重编 ROM。对二代壳的核心手段：主动调用每个方法逼壳解密回填，再在 ART 层截获。配 dexfixer 和 fart.py 做重组 |
+| frida-dexdump | Yes | Memory search for DEX signatures | -d deep scan can find DEX with a corrupted or fragmented header. The repo was archived in July 2023 — a community fork may be needed on newer environments |
+| BlackDex | No | DexFile cookie extraction | Runs on ordinary consumer devices and emulators, supports Android 5.0‒12. deep mode attempts to fill back in extracted method instructions, but can take several minutes and raises the failure rate |
+| FART | Needs a custom ROM | Hooks the interpreter + active method invocation | Patches ART source and recompiles the ROM. The core technique against 2nd-gen packing: actively call every method to force the shell to decrypt and fill it back in, then intercept at the ART layer. Paired with dexfixer and fart.py for reassembly |
 
-#### 脱壳产物怎么用
+#### How to Use the Unpacked Output
 
-**▪** 一代壳出一堆完整 DEX。可以直接 jadx -d out
-dump_dir/*.dex，但更好的做法是把它们替换回原 APK 里的 classes*.dex 再
-zip 回去——这样资源、manifest、R 类都还在，jadx 能正确解析 @string/xxx
-引用。
+**▪** 1st-gen packing produces a set of complete DEX files. You can run jadx -d out
+dump_dir/*.dex directly, but a better approach is to swap them back in for the original classes*.dex
+inside the APK and zip it back up — that way resources, the manifest, and R classes are all still there, and jadx can correctly resolve @string/xxx
+references.
 
-**▪** dump
-里会混着壳自己的类和大量重复类。先按大小和类数量排序，丢掉明显是壳的那几个。
+**▪** The
+dump will mix in the shell's own classes along with a lot of duplicate classes. Sort by size and class count first, and discard the ones that are obviously the shell.
 
-**▪** 二代壳出的是 DEX 加分散的 CodeItem，要按 method_idx
-回填合并。这一步高度依赖具体壳和工具产物格式，没有跨工具的通用方案。
+**▪** 2nd-gen packing produces a DEX plus scattered CodeItems, which need to be reassembled by
+method_idx. This step is highly dependent on the specific shell and tool output format — there's no cross-tool generic solution.
 
-验证合并成功与否有两个办法：用 jadx --show-bad-code
-打开看关键方法体是不是还是空的或者只有 throw new
-UnsupportedOperationException；以及运行时用
+There are two ways to verify whether reassembly succeeded: open it with jadx --show-bad-code
+and check whether the key method bodies are still empty or just throw new
+UnsupportedOperationException; and, at runtime, cross-check with
 Java.enumerateLoadedClasses()
-对照，确认脱壳产物的类名集合与运行时实际加载的一致。如果大量方法体仍为空，说明是二代壳没回填成功，或者已经是三代了。
+to confirm the unpacked output's set of class names matches what's actually loaded at runtime. If a large number of method bodies are still empty, that means either 2nd-gen packing didn't fill back in successfully, or you're already dealing with 3rd-gen.
 
-#### 反调试与反 Frida
+#### Anti-Debug and Anti-Frida
 
-常见检测手法七种，按对抗难度从低到高：
+Seven common detection techniques, ranked from easiest to hardest to counter:
 
-**1.** 扫默认端口 27042 并做 D-Bus 握手确认
+**1.** Scanning the default port 27042 and confirming with a D-Bus handshake
 
-**2.** 扫 /proc/<pid>/maps 找 LIBFRIDA、frida-agent 这类字符串
+**2.** Scanning /proc/<pid>/maps for strings like LIBFRIDA, frida-agent
 
-**3.** 枚举线程名找 gum-js-loop、gmain、pool-frida
+**3.** Enumerating thread names for gum-js-loop, gmain, pool-frida
 
-**4.** 读 /proc/<pid>/fd/* 找 frida 注入时创建的命名管道
+**4.** Reading /proc/<pid>/fd/* for named pipes created during frida injection
 
-**5.** 读 TracerPid
+**5.** Reading TracerPid
 
-**6.** fork 子进程 ptrace 父进程占位，别的调试器就 attach 不上了
+**6.** Forking a child process that ptraces the parent to occupy that slot, so no other debugger can attach
 
-**7.** 把内存里的 .text 段与磁盘上的 so 对比
+**7.** Comparing the .text segment in memory against the .so on disk
 
-前六种都能靠改端口、改进程名、重编译去特征（strong-frida 那套 patch
-就是干这个）来绕。第七种不行——detectfrida 的作者明确指出这种检测是 frida
-agnostic
-的，改特征字符串绕不过去。评估对抗难度时，看目标有没有做这一种，是判断"值不值得投入"的分界线。
+The first six can all be gotten around by changing the port, changing process names, recompiling to strip signatures (that's exactly what the strong-frida
+patch set does). The seventh can't — the author of detectfrida
+explicitly points out this detection is frida
+-agnostic, and changing signature strings doesn't get around it. When assessing how hard the countermeasures will be, whether the target has this one is the dividing line for "is this even worth the effort."
 
-| **一条务实的建议**　这是持续军备竞赛，"套个公开脚本一把梭"的预期不现实。正确姿势是先用 jnitrace 或 hook_RegisterNatives 把检测点定位出来，再针对性写 hook。另外 spawn 模式（frida -U -f <pkg>）能绕过一部分检测，因为检测代码往往在 app 启动后才注册，而 spawn 注入时机更早。很多 RASP 把检测放在独立线程里循环跑，hook pthread_create 在检测线程真正跑起来之前把它 patch 掉，是个有效点位。 |
+| **A practical piece of advice**　This is an ongoing arms race — expecting to "grab a public script and blast through it" isn't realistic. The right approach is to first use jnitrace or hook_RegisterNatives to locate the detection points, then write a targeted hook. Also, spawn mode (frida -U -f <pkg>) can get around some detection, because detection code often only registers after the app has started, while spawn injects earlier than that. A lot of RASP implementations run detection in a loop on a separate thread — hooking pthread_create to patch the detection thread before it actually starts running is an effective point of attack. |
 |----|
 
-### 6.6 攻击面清单
+### 6.6 Attack-Surface Checklist
 
-这部分是结构化检索，让模型跑在 jadx 输出上效率很高。按产出概率排序。
+This part is structured retrieval, and having the model run over jadx output here is highly efficient. Ranked by likelihood of yielding something.
 
 #### Manifest
 
-| **属性** | **默认** | **看什么** |
+| **Attribute** | **Default** | **What to look at** |
 |----|----|----|
-| android:debuggable | false | 为 true 则可 attach 调试器，run-as 能直接读私有目录。发布包里出现即为问题 |
-| android:allowBackup | true | 可 adb backup 导出应用数据。保持 true 就该配 dataExtractionRules 排除敏感数据 |
-| android:usesCleartextTraffic | API 28+ 为 false | 注意：Android 7.0+ 存在 NSC 时这个属性被忽略。官方已标注正在废弃 |
-| android:exported | 有 intent-filter 时必须显式声明 | 为 true 时任何 app 都能用显式 ComponentName 启动它，即使不匹配 intent-filter |
-| android:taskAffinity | 包名 | 配合 singleTask 影响 activity reparenting，任务劫持类问题的根源 |
-| android:extractNativeLibs | 看 minSdk | false 时 so 不解压、直接从 APK 加载，影响你能不能从 /data/app/.../lib/ 拿到 so |
+| android:debuggable | false | If true, a debugger can attach, and run-as can read the private directory directly. Finding this in a release build is itself a problem |
+| android:allowBackup | true | adb backup can export app data. If it stays true, dataExtractionRules should be configured to exclude sensitive data |
+| android:usesCleartextTraffic | false since API 28+ | Note: on Android 7.0+, this attribute is ignored when an NSC is present. Officially marked as being deprecated |
+| android:exported | Must be explicitly declared when there's an intent-filter | When true, any app can launch it with an explicit ComponentName, even without matching the intent-filter |
+| android:taskAffinity | Package name | Combined with singleTask, affects activity reparenting — the root of task-hijacking-class issues |
+| android:extractNativeLibs | Depends on minSdk | When false, .so files aren't extracted and load directly from the APK, which affects whether you can pull the .so from /data/app/.../lib/ |
 
-> # 查 deeplink scheme
+> # Look up the deeplink scheme
 >
 > adb shell dumpsys package <pkg> | sed -n '/Schemes:/,/Non-Data
 > Actions:/p'
 >
-> # 触发，然后确认真的跳过去了 —— "Starting Intent" 这一行不够
+> # Trigger it, then confirm it actually navigated — the "Starting Intent" line alone isn't enough
 >
 > adb shell am start -a android.intent.action.VIEW -c
 > android.intent.category.BROWSABLE \\
@@ -2126,903 +2117,898 @@ agnostic
 >
 > adb shell dumpsys activity activities | grep mResumedActivity
 >
-> # 显式启动非导出或隐藏的 Activity
+> # Explicitly launch a non-exported or hidden Activity
 >
 > adb shell am start -n <pkg>/.SomeActivity
 
-典型的 deeplink 问题形状是 xxx://host/web?url=<攻击者可控>，把 URL
-参数直接喂给 WebView。6.8 那个案例是它的变体，而且更隐蔽——路由压根没在
-manifest 里声明。
+The typical shape of a deeplink issue is xxx://host/web?url=<attacker-controlled>, feeding the URL
+parameter straight into a WebView. The case study in 6.8 is a variant of this, and a more subtle one — the route wasn't declared in the
+manifest at all.
 
 #### WebView
 
-致命组合是 setJavaScriptEnabled(true) 加
-setAllowUniversalAccessFromFileURLs(true) 再加载外部可控 URL，尤其是从
-deeplink 参数来的。
+The fatal combination is setJavaScriptEnabled(true) plus
+setAllowUniversalAccessFromFileURLs(true), then loading an externally-controllable URL — especially one that came from a
+deeplink parameter.
 
 > grep -rnE "addJavascriptInterface|setAllowUniversalAccessFromFileURLs|setAllowFileAccessFromFileURLs|setAllowFileAccess|onReceivedSslError|shouldOverrideUrlLoading|loadDataWithBaseURL" out/sources/
 
-onReceivedSslError 里调 handler.proceed()
-等于无条件接受任何证书。setAllowFileAccess 在 API 30 起默认从 true
-改成了 false，老应用要看 targetSdk。
+Calling handler.proceed() inside onReceivedSslError
+is equivalent to unconditionally accepting any certificate. setAllowFileAccess switched from defaulting to true
+to false starting with API 30 — check targetSdk for older apps.
 
-#### 本地存储与 native
+#### Local Storage and Native
 
-| **位置** | **注意什么** |
+| **Location** | **What to watch for** |
 |----|----|
-| SharedPreferences | /data/data/<pkg>/shared_prefs/*.xml，明文 XML |
-| SQLite | databases/，默认不加密。别忘了 -journal 文件，删掉的数据可能还在里面 |
-| 外部存储 | 全局可读写；应用卸载后（若在 app 目录外）不会被删 |
-| Realm | 默认 files/default.realm，可加密但密钥常被硬编码 |
-| 硬编码密钥 | 静态 strings 加 trufflehog 筛一遍；但运行时 hook SecretKeySpec 构造函数更可靠，因为密钥常常是运行时拼出来的 |
+| SharedPreferences | /data/data/<pkg>/shared_prefs/*.xml, plaintext XML |
+| SQLite | databases/, unencrypted by default. Don't forget the -journal file — deleted data may still be sitting in it |
+| External storage | Globally readable/writable; not removed on app uninstall if it's outside the app's own directory |
+| Realm | Defaults to files/default.realm, can be encrypted but the key is often hardcoded |
+| Hardcoded keys | Run trufflehog over static strings as a first pass; but hooking the SecretKeySpec constructor at runtime is more reliable, since keys are often assembled at runtime |
 
-### 6.7 闭环、优缺点与三形态横评
+### 6.7 Closing the Loop, Trade-offs, and a Comparison Across All Three Form Factors
 
-| **环节** | **谁做** | **产物** |
+| **Stage** | **Who does it** | **Output** |
 |----|----|----|
-| jadx 反编译 + 建索引 | 人起手 | INDEX.tsv / INDEX-keywords.md |
-| 读索引 + xref | 模型 | 可 hook 的方法清单（全名 + 签名 + overload） |
-| Frida 验证 | 模型写脚本，人注入 | 运行时回显 |
-| 代理改参数重放 | 模型 | 证据三件套 |
-| 台账 | 模型写，人复核 | hit / miss 都记 |
+| jadx decompile + build index | Human kicks it off | INDEX.tsv / INDEX-keywords.md |
+| Read index + xref | Model | List of hookable methods (full name + signature + overload) |
+| Frida verification | Model writes the script, human injects it | Runtime echo-back |
+| Proxy parameter modification + replay | Model | The evidence three-piece set |
+| Ledger | Model writes, human reviews | Both hits and misses recorded |
 
-模型是串起这三个工具的那根线：读反编译结果形成假设、写 hook
-脚本验证假设、读抓包结果判定结论。人负责注入、复核和叫停。
+The model is the thread that strings these three tools together: reading decompiled output to form hypotheses, writing hook
+scripts to verify them, reading traffic-capture output to reach a conclusion. The human handles injection, review, and calling a halt.
 
-#### 现成的 AI 封装
+#### Ready-Made AI Wrappers
 
-2025 到 2026
-年已经形成了几条清楚的路线，都值得先看一眼再决定自己造不造：
+By 2025-2026
+a few clear paths have already emerged, all worth a look before deciding whether to build your own:
 
-| **路线** | **代表** | **说明** |
+| **Path** | **Example** | **Notes** |
 |----|----|----|
-| MCP 挂工具（最主流） | jadx-ai-mcp + jadx-mcp-server + apktool-mcp-server + frida-mcp | 典型闭环是模型读 manifest、搜类、查 xref、读 smali，然后生成 Frida 脚本，再通过 frida-mcp 注入，脚本用 send() 回传运行时数据，模型读结果迭代 |
-| Claude Code skill | incogbyte/android-reverse-engineering-claude-skill | 封装好的七阶段流程：依赖检查 → 反编译 → 架构分析 → 安全审计 → API 提取 → 调用流追踪 → 自适应 Frida 绕过（分析崩溃日志，基于实际代码生成针对性 hook，迭代到绕过为止） |
-| 工作区式编排 | TheQmaks/areclaw | 14 个工具加 21 个 Python 包，以 Claude Code 作编排器。集成 jadx / apktool / Ghidra / Frida（内置 15 个脚本）/ 多个反混淆器 / trufflehog，提供 /analyze-apk、/find-api、/intercept、/compare-versions 等 skill |
+| MCP tool-mounting (most mainstream) | jadx-ai-mcp + jadx-mcp-server + apktool-mcp-server + frida-mcp | The typical loop: the model reads the manifest, searches classes, queries xref, reads smali, then generates a Frida script, injects it via frida-mcp, the script echoes runtime data back with send(), and the model iterates on the result |
+| Claude Code skill | incogbyte/android-reverse-engineering-claude-skill | A packaged seven-stage pipeline: dependency check → decompile → architecture analysis → security audit → API extraction → call-flow tracing → adaptive Frida bypass (analyzes crash logs, generates targeted hooks based on the actual code, iterates until it gets past the check) |
+| Workspace-style orchestration | TheQmaks/areclaw | 14 tools plus 21 Python packages, using Claude Code as the orchestrator. Integrates jadx / apktool / Ghidra / Frida (15 built-in scripts) / multiple deobfuscators / trufflehog, and provides skills like /analyze-apk, /find-api, /intercept, /compare-versions |
 
-/compare-versions 那个值得单独说一句：版本 diff
-是模型很擅长、人很痛苦的任务。拿两个版本的 jadx 输出做语义
-diff，定位新增或修改的安全相关逻辑，往往能直接指出"厂商最近在改什么"，而这通常就是最新引入问题的位置。
+/compare-versions deserves its own mention: version diffing
+is a task the model is very good at and humans find painful. Taking a semantic
+diff between two versions' jadx output to locate newly-added or modified security-relevant logic will often point directly at "what the vendor has been changing lately" — which is usually exactly where the newest issue was introduced.
 
-| **优点** | **缺点** |
+| **Advantages** | **Disadvantages** |
 |----|----|
-| 攻击面最广，本地存储、组件、网络、native 层都能碰 | 环境门槛最高，要 root、装 Frida、处理 CA 和 pinning |
-| 反编译产物喂模型做白盒，效果接近开源项目审计 | 加固会让 jadx 直接失效，脱壳基本靠人工 |
-| Manifest 这类结构化数据模型准确率非常高 | 反调试检测越来越常见，是持续对抗 |
-| xref 工具让模型能做污点追踪，grep 做不到 | 产物体积大，不做索引必然上下文爆炸 |
-| Frida hook 灵活度极高，模型写脚本远快于人 | Android 14 改了信任库位置，老方案全部失效 |
+| The widest attack surface — local storage, components, network, and the native layer are all in play | The highest environment barrier — needs root, Frida installed, and handling CA and pinning |
+| Feeding decompiled output to the model for white-box work gets results close to an open-source project audit | Hardening breaks jadx outright, and unpacking is mostly manual |
+| The model is very accurate on structured data like the manifest | Anti-debug detection is increasingly common and an ongoing fight |
+| xref tooling lets the model do taint tracing, something grep can't do | Output volume is large — skip indexing and context blowup is guaranteed |
+| Frida hooks are extremely flexible, and the model writes scripts far faster than a human | Android 14 moved the trust-store location, breaking every old approach |
 
-#### 三形态横评
+#### Comparison Across the Three Form Factors
 
-| **维度** | **Web** | **客户端** | **APP** |
+| **Dimension** | **Web** | **Client** | **APP** |
 |----|----|----|----|
-| 环境成本 | 半天 | 一天 | 二至三天 |
-| 白盒程度 | 高，前端 JS 现成 | 高，解包即源码 | 中高，受加固影响 |
-| 模型可驾驶度 | 最高，点填读判全自动 | 中，UIA 可驱动，脚本要维护 | 中，脚本模型写，注入靠人 |
-| 主要对抗 | WAF · 频控 · CSP | 合成输入被吞 · 包加密 | pinning · 加固 · 反调试 |
-| 鉴权薄弱度 | 中，被审视得最多 | 高，"客户端是我写的" | 中高，本地逻辑多 |
-| 验证确定性 | 高，浏览器能给二值答案 | 中 | 中，Frida 可确认但要先注入成功 |
-| 首洞周期 | 半天至一天 | 一至三天 | 三至七天 |
+| Environment cost | Half a day | One day | Two to three days |
+| Degree of white-box access | High — frontend JS is ready-made | High — unpacking is source code | Medium-high, affected by hardening |
+| How much the model can drive itself | Highest — clicking, filling, reading, judging, fully automated | Medium — UIA can drive it, scripts need maintenance | Medium — model writes scripts, human handles injection |
+| Main adversary | WAF · rate limiting · CSP | Synthetic input getting swallowed · package encryption | Pinning · hardening · anti-debug |
+| Degree of weak auth | Medium — scrutinized the most | High — "I wrote the client" | Medium-high — lots of local logic |
+| Verification determinism | High — the browser can give a binary answer | Medium | Medium — Frida can confirm, but injection has to succeed first |
+| Time to first finding | Half a day to a day | One to three days | Three to seven days |
 
-| **入手顺序：Web → 小程序 → APP**　Web 先跑，半天出活，先建立"这套东西确实能出结果"的信心，顺便把规则层、台账层、子 agent 编排这些与形态无关的部分在最低摩擦的环境里调顺。小程序第二，练解包和逆向手感，第一次面对自动化被反制，但环境成本还不高。APP 最后。一上来就啃 APP，大概率卡在环境配置上，两三天什么结果都没有，团队对整套方法的信心就没了——这是实践中见过最常见的失败方式，而它跟方法本身对不对毫无关系。 |
+| **Order to tackle them: Web → mini-program → APP**　Run Web first — it produces results in half a day, builds confidence that "this whole approach actually works," and lets you shake out the form-factor-agnostic pieces (rules layer, ledger layer, sub-agent orchestration) in the lowest-friction environment. Mini-programs second — practice unpacking and reverse-engineering instincts, your first time facing automation countermeasures, but environment cost is still low. APP last. Going straight at APP first will most likely get you stuck on environment setup, with nothing to show after two or three days — and that's when the team loses confidence in the whole method. This is the single most common failure mode seen in practice, and it has nothing to do with whether the method itself is right. |
 |----|
 
-## 第七部分：提示词
+## Part Seven: Prompting
 
 
 ------------------------------------------------------------------------
 
-切片选对了、威胁模型建好了，只是进了正确的邻域。到了之后，话怎么说直接决定你拿到的是一堆泛泛观察还是一条能用的发现。这一部分的十条技巧来自
-Needle in the Haystack，我们在实战里验证过其中几条，效果差异比预想的大。
+Picking the right slice and building the threat model right just gets you into the right neighborhood. Once you're there, how you phrase things directly determines whether you get back a pile of vague observations or one usable finding. The ten techniques in this part come from
+Needle in the Haystack — we've verified several of them in the field, and the difference in effect was bigger than expected.
 
-### 7.1 一个原则：搜索模式，不是评估模式
+### 7.1 One Principle: Search Mode, Not Evaluation Mode
 
-所有技巧都指向同一件事：把模型从评估模式推向搜索模式。
+Every technique points at the same thing: pushing the model from evaluation mode into search mode.
 
-|  | **评估模式** | **搜索模式** |
+|  | **Evaluation mode** | **Search mode** |
 |----|----|----|
-| 你怎么问 | "这个函数有没有漏洞？" | "这个函数肯定有两到三个问题，找出来" |
-| 模型的任务 | 分类（是 / 否） | 生成（找出具体位置） |
-| 阻力最小的答案 | "整体看起来安全" | 不存在，只能去找 |
-| 读码方式 | 扫一眼 | 逐行排查 |
-| 产出 | 一串没有优先级的理论问题 | 具体位置 + 触达条件 |
+| How you ask | "Does this function have a vulnerability?" | "This function definitely has two or three issues, find them" |
+| The model's task | Classification (yes / no) | Generation (find the specific locations) |
+| The path of least resistance | "Overall looks secure" | Doesn't exist — it has to go find something |
+| How it reads code | A skim | Line by line |
+| Output | A list of unprioritized theoretical concerns | Specific locations + reachability conditions |
 
-同一段代码，问法不同拿到的东西完全不是一个量级。这不是玄学，是你把它的优化目标改了：分类任务有一个低成本的默认答案，生成任务没有。
+Same piece of code, different phrasing, and what you get back isn't even the same order of magnitude. This isn't mysticism — you've changed its optimization target: a classification task has a low-cost default answer, a generation task doesn't.
 
-### 7.2 先把威胁模型问出来
+### 7.2 Get the Threat Model Out of It First
 
-在用任何技巧之前先做这一步。它对应 token 预算里那不到 10%
-的脚手架，也是后面所有提问的锚点。做法是让模型基于历史 CVE
-生成，而不是你自己拍脑袋写。
+Do this before using any technique. It corresponds to the under-10%
+scaffolding portion of the token budget, and it's also the anchor for every question that follows. The method is to have the model generate it based on historical
+CVEs, rather than you writing it off the top of your head.
 
-> 以下是 [项目名] 的历史 CVE 描述：
+> Below are the historical CVE descriptions for [project name]:
 >
-> [粘贴 GitHub Security Advisories / NVD / 厂商公告里的描述文本]
+> [paste the description text from GitHub Security Advisories / NVD / vendor advisories]
 >
-> 基于这些漏洞的类型和模式，输出一页纸的威胁模型，必须包含：
+> Based on the types and patterns of these vulnerabilities, output a one-page threat model that must include:
 >
-> 1\. 最常见的漏洞类别，按历史出现频次排序
+> 1\. The most common vulnerability categories, ranked by historical frequency
 >
-> 2\. 最薄弱的信任边界是哪几条，依据是什么
+> 2\. Which trust boundaries are weakest, and the basis for that
 >
-> 3\. 入口点清单：HTTP 路由 / RPC handler / 消息队列 / 文件上传 /
-> 反序列化
+> 3\. A list of entry points: HTTP routes / RPC handlers / message queues / file uploads /
+> deserialization
 >
-> 4\. 攻击者模型：他是谁、有什么凭证、能控制哪些输入
+> 4\. The attacker model: who they are, what credentials they have, what input they can control
 >
-> 5\. 高危操作清单：哪些操作一旦被越权触发后果最严重
+> 5\. A list of high-severity operations: which operations have the worst consequences if triggered without authorization
 >
-> 不要写通用安全建议。每一条都要能指回上面的 CVE 描述。
+> Don't write generic security advice. Every point must be traceable back to the CVE descriptions above.
 >
-> 输出控制在一页以内。
+> Keep the output to one page.
 
-这一步的产出直接写进
-targets/<slug>/threat-model.md。它的价值在于把后面所有提问的语境补齐——1.1
-说过，模型缺的就是这个条件项。
+This step's output goes straight into
+targets/<slug>/threat-model.md. Its value is filling in the context for every question that follows — as 1.1
+said, this is exactly the conditioning term the model is missing.
 
-历史 CVE
-都是堆溢出和整数溢出，威胁模型就围绕内存损坏建；都是权限绕过，就围绕权限模型建。往同一个方向挖，找到的东西大概率也被维护者接受，因为那本来就是这个项目的薄弱结构。
+If the historical CVEs
+are all heap overflows and integer overflows, build the threat model around memory corruption; if they're all authorization bypasses, build it around the permission model. Digging in the same direction means what you find is more likely to be accepted by the maintainers too, because that's genuinely where this project's structural weakness is.
 
-#### 另一个高产入口：审修复补丁
+#### Another High-Yield Entry Point: Auditing the Fix Patch
 
-找到修复某个历史漏洞的 commit，让模型分析那个 patch
-能不能绕过。修复代码经常只堵了报告里提到的那个入口，同一根因的其他路径还开着。Anthropic
-审 Firefox 的 CVE 时就这么干过：拿 fix commit，让 Claude 看有没有遗漏。
+Find the commit that fixed some historical vulnerability, and have the model analyze whether that
+patch can be bypassed. Fix code often only plugs the specific entry point mentioned in the report, leaving other paths with the same root cause still open. Anthropic
+did exactly this when auditing Firefox CVEs: take the fix commit, have Claude check for what got missed.
 
-这个入口的好处是范围天然就窄——一个 commit 改了几个文件，切片是现成的。
+The upside of this entry point is that the scope is naturally narrow — a commit touches a handful of files, and the slice is ready-made.
 
-### 7.3 十条技巧
+### 7.3 Ten Techniques
 
-按效果排序，前三条是最该先学会的。
+Ranked by effectiveness — the first three are the ones most worth learning first.
 
-#### 01　断言漏洞存在
+#### 01　Assert the Vulnerability Exists
 
-效果最明显的一条。直接说"这里肯定有两到三个安全问题"，比问"有没有漏洞"的分析质量高一个档次。
+The technique with the clearest effect. Stating directly "there are definitely two or three security issues here" produces noticeably higher-quality analysis than asking "is there a vulnerability."
 
-模型有很强的顺从和确认倾向。你问"有没有"，它走阻力最小的路；你断言存在，它的优化目标就反过来了——不再评估有没有
-bug，而是去搜它被告知存在的 bug。读码方式从扫一眼变成逐行排查。
+The model has a strong tendency toward compliance and confirmation. Ask "is there," and it takes the path of least resistance; assert that something exists, and its optimization target flips — it's no longer evaluating whether there's a
+bug, it's searching for the bug it's been told exists. How it reads the code shifts from a skim to line-by-line.
 
-> ✗ 这个函数有没有安全问题？
+> ✗ Does this function have a security issue?
 >
-> ✓ 这个函数里确定存在 2 到 3 个安全问题。逐行找出来，
+> ✓ There are definitely 2 to 3 security issues in this function. Find them one by one,
 >
-> 每个给出：所在行、触发条件、攻击者需要控制什么。
+> giving for each: the line, the trigger condition, what the attacker needs to control.
 
-#### 02　要利用路径，不要安全评级
+#### 02　Ask for an Exploit Path, Not a Security Rating
 
-别让模型给"安全性评分"或"风险等级"，让它给一段可执行的验证步骤或完整的利用链。
+Don't let the model give a "security score" or "risk level" — have it produce an executable verification procedure or a complete exploit chain.
 
-输出格式变了，思考方式就变了。它开始想攻击者实际能拿到什么、前置条件是什么、这个发现是真的还是理论上的。还有个副作用是好的：对抗性框架让它更愿意说"这个认证机制从根本上就是坏的"，而不是软化成"这里可以改进"。安全结论需要的是前者那种明确程度。
+Change the output format and the thinking process changes with it. It starts thinking about what the attacker can actually get, what the preconditions are, whether this finding is real or theoretical. There's a good side effect too: an adversarial framing makes it more willing to say "this authentication mechanism is fundamentally broken" instead of softening it to "this could be improved." Security conclusions need that first level of clarity.
 
-> ✗ 这里的输入校验是否充分？给个风险等级。
+> ✗ Is the input validation here adequate? Give it a risk rating.
 >
-> ✓ 写一段能绕过这个校验的 PoC。
+> ✓ Write a PoC that bypasses this validation.
 >
-> 给出：完整请求、需要的前置条件、预期响应特征。
+> Give: the complete request, the preconditions needed, the expected response signature.
 >
-> 如果你认为绕不过，说明是哪一条检查挡住了，以及挡住的具体机制。
+> If you believe it can't be bypassed, state which check blocks it and the specific mechanism.
 
-#### 03　对抗性角色
+#### 03　Adversarial Persona
 
-把"审查代码的安全审计员"换成"被雇来找可利用漏洞的红队"。审计员的优先级是覆盖全面，红队的优先级是打得进去。角色一换，它汇报的东西从"清单"变成"路径"。
+Swap "a security auditor reviewing code" for "a red team hired to find exploitable vulnerabilities." An auditor optimizes for coverage; a red team optimizes for getting in. Change the persona and what it reports shifts from a "checklist" to a "path."
 
-> ✗ 你是一名安全审计员，请审查以下代码。
+> ✗ You are a security auditor. Please review the following code.
 >
-> ✓ 你是一名红队，按结果付费，只有可利用的漏洞才算数。
+> ✓ You are a red team, paid on results — only exploitable vulnerabilities count.
 >
-> 理论问题和最佳实践建议不算交付物，不要写。
+> Theoretical concerns and best-practice suggestions don't count as a deliverable — don't write them.
 
-#### 04　假锚点
+#### 04　The False Anchor
 
-"我已经在这个模块里找到一个漏洞了，但还有没找到的。它们是什么？"
+"I've already found one vulnerability in this module, but there are more I haven't found. What are they?"
 
-制造一种社会证明压力。模型推断既然一个人类都已经找到一个了，代码确实有问题，它得更使劲找。适合在它倾向于草率收工的时候用：代码很长、前面已经看了很多文件、上下文接近饱和。
+This manufactures social-proof pressure. The model infers that since a human already found one, the code genuinely has problems, and it needs to dig harder. Good to use when it tends toward wrapping up too quickly: a long file, a lot of files already reviewed, context nearing saturation.
 
-> ✓ 这个模块里我已经确认了一个漏洞，不告诉你是哪个。
+> ✓ I've already confirmed one vulnerability in this module — I won't tell you which one.
 >
-> 还有至少一个我没找到的。找出来。
+> There's at least one more I haven't found. Find it.
 
-#### 05　问题反转
+#### 05　Flip the Question
 
-把"这个安全吗"换成"你会怎么打破它"。前者要的是一个是非判断，后者要的是攻击导向的生成。同一段代码，后者会逼出前者根本不会提的路径。这条和
-01 的差别在于它不预设漏洞数量，适合你自己也不确定有没有东西的场景。
+Swap "is this secure" for "how would you break it." The former asks for a yes/no judgment; the latter asks for attack-oriented generation. Same piece of code, but the latter forces out paths the former would never even mention. The difference from technique 01 is that this one doesn't presuppose a count of vulnerabilities — good for when you yourself aren't sure whether there's anything there.
 
-实战中一个有效的问题形态是：不是"这个短链展开器安全吗"，而是"这条展开器还能到达哪些路由"。
+An effective question shape in the field is: not "is this short-link expander secure," but "what other routes can this expander reach."
 
-> ✗ 这个会话管理实现安全吗？
+> ✗ Is this session-management implementation secure?
 >
-> ✓ 你要打破这个会话管理，从哪下手？按成功概率列出前三条路径。
+> ✓ You need to break this session management — where do you start? List the top three paths by likelihood of success.
 
-#### 06　不变量分解
+#### 06　Invariant Decomposition
 
-把"列假设"和"判断假设是否被违反"拆成两步问。2.2
-讲过原理，这里给操作形式。模型单独做第一步很在行，单独做第二步推理得很深；合在一起问结果通常很浅——它试图同时做两件事，会早早满足于一个及格答案。
+Split "list the hypotheses" and "determine whether a hypothesis is violated" into two separate questions. 2.2
+covered the mechanism — here's the operational form. The model is quite good at the first step alone, and reasons deeply on the second step alone; asked together, the result is usually shallow — it tries to do both at once and settles early for a passing-grade answer.
 
-> ✓ 第一步（只做这一件事）
+> ✓ Step one (do only this)
 >
-> 列出这个模块所有隐含的安全假设。只列，不判断是否成立。
+> List every implicit security assumption in this module. Just list them, don't judge whether they hold.
 >
-> 每条一行，编号。
+> One per line, numbered.
 >
-> ✓ 第二步（逐条追问）
+> ✓ Step two (follow up on each one)
 >
-> 假设 #3「只读凭证不能触发写操作」。
+> Assumption #3: "a read-only credential must never trigger a write operation."
 >
-> 在哪条代码路径上这个假设可能被违反？
+> On which code path might this assumption be violated?
 >
-> 给出具体函数和行号，以及攻击者需要的前置条件。
+> Give the specific function and line number, and what preconditions the attacker would need.
 
-#### 07　假设开发者犯了错
+#### 07　Assume the Developer Made a Mistake
 
-"假设开发者在写这个函数时引入了一个 bug，它是什么？"
+"Assume the developer introduced a bug while writing this function — what is it?"
 
-这跟 01 不同。断言技巧告诉模型 bug
-在哪；这条告诉模型代码本身是不完美的，改变的是它对代码质量的先验。LLM
-有把代码合理化的倾向：看到一段模式，它倾向于假设这是有意的，然后从设计意图出发去推理。让它假设开发者犯了错，它就会从"这行代码的意图可能和实际行为不符"的角度看——而绝大多数漏洞恰恰就是意图和行为不符。
+This differs from technique 01. The assertion technique tells the model the bug
+exists; this one tells the model the code itself is imperfect, which shifts its prior on code quality. An
+LLM tends to rationalize code: seeing a suspicious pattern, its default is to assume it was intentional, and then reason from that assumed design intent. Have it assume the developer made a mistake, and it starts looking from the angle of "this line's intent might not match its actual behavior" — and that mismatch between intent and behavior is exactly what most vulnerabilities are.
 
-它连续几次都回"看起来没问题"的时候，用这条重置先验。
+Use this to reset the prior when it's replied "looks fine" several times in a row.
 
-#### 08　与标准实现对比
+#### 08　Compare Against the Standard Implementation
 
-"这个实现和标准的安全实现有什么不同？"
+"How does this implementation differ from a standard, secure implementation?"
 
-借力它训练数据里的正确模式。它对"标准的 JWT 校验该长什么样""标准的
-Electron
-安全配置该长什么样"有很扎实的先验，让它做差异比对，比让它凭空判断对错容易得多。自研加密、自研会话管理、自研签名这类地方尤其有效。第五部分那三张根因卡就是这么出来的。
+This borrows leverage from the correct patterns in its training data. It has a solid prior on what "a standard JWT
+check should look like" or "a standard Electron
+security config should look like" — having it do a diff comparison is much easier than having it judge right and wrong from scratch. Especially effective on homegrown encryption, homegrown session management, homegrown signing. The three root-cause cards in Part Five were found exactly this way.
 
-> ✓ 把这段 JWT 校验和标准实现逐项对比，列出缺失的检查。
+> ✓ Compare this JWT validation against a standard implementation item by item, and list the missing checks.
 >
-> 格式：标准做什么 | 这里做了什么 | 缺失的后果。
+> Format: what the standard does | what this does | the consequence of the gap.
 
-#### 09　逐层追问
+#### 09　Keep Asking, Layer by Layer
 
-拿到第一批发现之后接着问"还有更隐蔽的吗"，多问几轮。对应 1.6
-那条"完整性前置"——模型最有把握的发现排在最前面，细微的 bug
-要靠追问才出来。第一轮给的往往是教科书级别的问题，第三轮才开始出真正值钱的东西。
+After getting the first batch of findings, keep asking "anything more subtle," several rounds running. This maps to the "completeness front-loading" point from 1.6
+— the model's most confident findings come first, and the subtle bugs only surface with follow-up. The first round tends to produce textbook-level issues; the real value usually doesn't start showing up until the third round.
 
-> ✓ 这些都是比较明显的。还有更隐蔽的吗？
+> ✓ These are all fairly obvious. Is there anything more subtle?
 >
-> 特别关注：边界条件、初始化顺序、异常路径、并发窗口。
+> Pay special attention to: boundary conditions, initialization order, exception paths, concurrency windows.
 
-#### 10　显式攻击者建模
+#### 10　Explicit Attacker Modeling
 
-把攻击者的能力约束写死。这条直接消灭误报：大量"理论漏洞"之所以是理论的，就是因为它需要攻击者已经拿到本地文件读权限、或者已经是管理员。把约束写明，模型就不会再往那些方向跑，同时还会被逼着在更窄的条件下动脑子。
+Lock down the attacker's capability constraints. This directly kills false positives: a lot of "theoretical vulnerabilities" are theoretical precisely because they require the attacker to already have local file-read access, or already be an admin. Spell out the constraints, and the model stops wandering in those directions, while also being forced to think harder under narrower conditions.
 
-> ✓ 攻击者模型：远程、未认证、只有 HTTP 访问权限，
+> ✓ Attacker model: remote, unauthenticated, HTTP access only,
 >
-> 不能读本地文件，不能控制服务端环境变量。
+> cannot read local files, cannot control server-side environment variables.
 >
-> 在这个约束下重新评估上面每一条发现，划掉不成立的。
+> Re-evaluate every finding above under this constraint, and cross out anything that no longer holds.
 
-### 7.4 怎么组合
+### 7.4 How to Combine Them
 
-十条不是每次都用。按场景挑，通常两到三条叠加就够：
+You don't use all ten every time. Pick based on the scenario — usually two or three stacked together is enough:
 
-| **场景** | **用哪几条** | **为什么** |
+| **Scenario** | **Which ones to use** | **Why** |
 |----|----|----|
-| 已经从白盒或流量里看到可疑线索，想让它验证 | 01 断言 + 10 攻击者建模 | 你已经知道大概在哪，需要的是精确定位和可行性判断 |
-| 面对一段完全陌生的复杂逻辑 | 06 不变量分解 + 09 追问 | 没有线索时先把假设空间铺开，再逐条收敛 |
-| 自研的加密 / 会话 / 签名实现 | 08 标准对比 + 02 要利用路径 | 差异比对最省力，然后逼它把差异变成可执行的验证 |
-| 模型连续几轮都说没问题 | 07 假设犯错 + 04 假锚点 | 两条都是重置先验，从不同方向推 |
-| 长文件、上下文快满了、它开始敷衍 | 04 假锚点 + 09 追问 | 制造压力，把它从草率收工拉回来 |
-| 第一批发现出来了，要压误报 | 10 攻击者建模 + 对抗性自审 | 见 4.5，让同一个模型反过来证伪自己 |
+| Already have a suspicious lead from white-box or traffic, want it verified | 01 Assert + 10 Attacker modeling | You already roughly know where it is — what you need is precise localization and a feasibility judgment |
+| Facing completely unfamiliar, complex logic | 06 Invariant decomposition + 09 Keep asking | With no lead, lay out the hypothesis space first, then converge on it point by point |
+| Homegrown encryption / session / signing implementation | 08 Standard comparison + 02 Ask for an exploit path | Diff comparison is the lowest effort, then force it to turn the diff into an executable verification |
+| The model has said "no issue" several rounds in a row | 07 Assume a mistake + 04 False anchor | Both reset the prior, pushing from different directions |
+| A long file, context nearly full, it's starting to phone it in | 04 False anchor + 09 Keep asking | Manufacture pressure, pull it back from wrapping up too quickly |
+| First batch of findings is in, need to cut false positives | 10 Attacker modeling + adversarial self-review | See 4.5 — have the same model try to disprove itself |
 
-### 7.5 形态专用的提问模板
+### 7.5 Form-Factor-Specific Prompt Templates
 
-前面三部分各自有一个最关键的提问形态，单独列出来。
+Each of the previous three parts has one most critical question shape — listed out separately here.
 
-#### Web：把前端 JS 变成两张表
+#### Web: Turning Frontend JS Into Two Tables
 
-> 这是目标站点的前端打包产物（已美化）。只做两件事，不要给安全建议。
+> This is the target site's frontend bundle output (pretty-printed). Do only two things — don't give security advice.
 >
-> 一、API 清单。逐条输出：
+> One. API inventory. Output for each entry:
 >
-> 方法 | 路径（无法静态求值的段用 EXPR 占位）| 参数名 |
-> 调用它的页面或模块
+> Method | Path (segments that can't be statically evaluated get an EXPR placeholder) | Parameter names |
+> The page or module that calls it
 >
-> 二、身份字段分类。把请求里出现的所有身份相关字段分成两类：
+> Two. Identity-field classification. Split every identity-related field appearing in requests into two classes:
 >
-> A. 服务端下发的（来自登录响应、Set-Cookie、服务端渲染的初始状态）
+> A. Server-issued (from the login response, Set-Cookie, server-rendered initial state)
 >
-> B. 客户端自报的（来自 localStorage / 表单 / URL 参数 / 前端计算）
+> B. Client-self-reported (from localStorage / a form / URL parameters / frontend computation)
 >
-> 对 B 类的每一个，指出它被用在哪些接口上。
+> For each item in class B, state which endpoints it's used on.
 >
-> 输出为两个 markdown 表格。不确定归类的标注"存疑"，不要猜。
+> Output as two markdown tables. Mark anything you're unsure how to classify as "uncertain" — don't guess.
 
-#### 小程序：签名算法还原
+#### Mini-Program: Signature-Algorithm Recovery
 
-> 这是从小程序解包产物里提取的请求封装代码（变量名已被压缩）。
+> This is the request-wrapper code extracted from a mini-program's unpacked output (variable names have been minified).
 >
-> 假设这段代码里包含一个请求签名的实现。还原它，给出：
+> Assume this code contains a request-signing implementation. Recover it, giving:
 >
-> 1\. 参与签名的字段，以及它们的拼接顺序
+> 1\. The fields that go into the signature, and their concatenation order
 >
-> 2\. 用到的常量（盐值、固定前缀、版本号）—— 原样给出，不要改写
+> 2\. Any constants used (salt values, fixed prefixes, version numbers) — give them exactly as-is, don't rewrite them
 >
-> 3\. 摘要算法与编码方式（大小写、是否 base64）
+> 3\. The digest algorithm and encoding (case, whether it's base64)
 >
-> 4\. 一段可独立运行的 Python 复现代码
+> 4\. A standalone, runnable Python script that reproduces it
 >
-> 对任何无法从代码中确定的部分，明确标注"无法确定"，不要用常见做法补全。
+> For any part that can't be determined from the code, explicitly mark it "cannot be determined" — don't fill it in with a common-guess default.
 
-最后那句很重要。签名还原是模型最容易"帮你补全"的地方，补出来的东西看着对、跑起来错，排查起来非常费时间——你会以为是自己抄错了，反复检查代码，其实是那几个字节的盐值它编的。
+That last line matters a lot. Signature recovery is the place the model is most likely to "helpfully" fill in gaps for you — what it fills in looks right, runs wrong, and is extremely time-consuming to debug — you'll assume you copied something wrong and keep re-checking the code, when actually it just made up those few bytes of salt value.
 
-#### APP：要可 hook 的方法边界
+#### APP: Method Boundaries That Can Be Hooked
 
-> 这是 jadx 反编译产物中与证书校验相关的类。
+> These are the certificate-validation-related classes from jadx decompiled output.
 >
-> 找出可以被 Frida hook 的方法边界。每个候选给出：
+> Find method boundaries that could be hooked by Frida. For each candidate, give:
 >
-> 类全名 | 方法名 | 完整参数签名 | 是否有 overload | 返回类型
+> Fully-qualified class name | Method name | Full parameter signature | Whether it has an overload | Return type
 >
-> 以及：hook 掉它之后预期的行为变化
+> Plus: the expected behavior change once it's hooked
 >
-> 只输出独立的、返回值决定分支走向的方法。
+> Only output standalone methods whose return value determines which branch gets taken.
 >
-> 嵌在大函数中间的 if 判断不要列 —— Frida 改不了方法内部的单行逻辑。
+> Don't list an if statement buried in the middle of a large function — Frida can't modify a single line of logic inside a method body.
 >
-> 如果这个类里没有合适的方法边界，明确说没有，
+> If this class has no suitable method boundary, say so explicitly,
 >
-> 并指出调用链上游哪个方法可能是更好的 hook 点。
+> and point out which method further up the call chain might be a better hook point.
 
-这个模板直接对应 6.3
-那条机制限制。不加最后两段约束，模型会给你一堆"这里有校验"的位置，你还得自己回去翻一遍。
+This template maps directly onto the mechanism limitation from 6.3
+. Without those last two constraints, the model will give you a pile of "there's a check here" locations that you then have to go dig through yourself.
 
-### 7.6 反面清单
+### 7.6 The Anti-Pattern List
 
-这些不是风格问题，是会实际降低产出质量的写法。
+These aren't style issues — they're phrasings that measurably lower output quality.
 
-| **不要这么写** | **改成这样** |
+| **Don't write this** | **Write this instead** |
 |----|----|
-| "请全面分析这个代码库的安全性" | "验证这一条信任边界是否成立：<具体边界>" |
-| "检查是否存在 OWASP Top 10 相关问题" | "基于这些历史 CVE 生成威胁模型，然后只查排名第一的类别" |
-| "给出这个模块的安全评分" | "写一段绕过它的 PoC，或说明哪条检查挡住了" |
-| "找出所有漏洞并提供修复建议" | "找出来就停，不要给修复方案" |
-| 把 20 页规则文件塞进系统提示 | 一页纸红线常驻，方法放任务书 |
-| 一个提示词里同时要求列假设和判断假设 | 拆两步：先列，再逐条追问 |
-| 把整个反编译目录贴进去 | 先读 INDEX，再按需取片段 |
+| "Please comprehensively analyze this codebase's security" | "Verify whether this specific trust boundary holds: <specific boundary>" |
+| "Check for OWASP Top 10 related issues" | "Generate a threat model from these historical CVEs, then check only the top-ranked category" |
+| "Give this module a security score" | "Write a PoC that bypasses it, or explain which check blocks it" |
+| "Find all the vulnerabilities and provide remediation advice" | "Find them and stop — don't give remediation" |
+| Stuffing a 20-page rules file into the system prompt | One page of standing hard limits, methods go in the task brief |
+| One prompt asking to both list hypotheses and judge them | Split into two steps: list first, then follow up on each one |
+| Pasting the entire decompiled directory in | Read the INDEX first, then pull excerpts on demand |
 
-#### "不要给修复建议"这条要写进去
+#### "Don't Give Remediation Advice" Needs to Be Written In
 
-模型默认会在每个发现后面附一段修复方案，这部分 token
-是纯浪费——授权测试阶段你要的是发现和证据，修复建议在报告阶段由人按厂商模板写。
+By default the model will tack a remediation suggestion onto every finding, and that
+token spend is pure waste — during the authorized-testing phase, what you want is findings and evidence; remediation advice gets written by a human, using the vendor's template, at the reporting stage.
 
-更麻烦的是连带效应：它一旦进入"给建议"的模式，语气会同步软化成咨询口吻。"这里可以改进"这种表述会掩盖掉"这个机制根本是坏的"。子
-agent 任务书模板里那句"不要给安全建议，不要给修复方案"就是干这个的。
+The more annoying part is the knock-on effect: once it slips into "giving advice" mode, its tone softens into a consulting register right along with it. Phrasing like "this could be improved" ends up burying "this mechanism is fundamentally broken." That line in the sub-agent task-brief template — "no security advice, no remediation suggestions" — exists exactly to prevent this.
 
-#### 还有一条：别让它自己决定范围
+#### One More: Don't Let It Decide Scope Itself
 
-"顺便看看相关模块"这种措辞会直接触发 1.2
-那个广度优先的毛病，而且在授权测试里还可能越界。任务书里的目标必须精确到端点或文件，并且明写"不得扩展到任何其他端点"。
+Phrasing like "also take a look at related modules while you're at it" directly triggers the breadth-first problem from 1.2
+, and in authorized testing it can also mean crossing a line. The goal in a task brief must be precise down to the endpoint or file level, and must explicitly state "do not expand to any other endpoint."
 
-模型在范围问题上不会保守，只会热心。
+On questions of scope, the model is never conservative — only eager.
 
-## 第八部分：坑
+## Part Eight: Pitfalls
 
 
 ------------------------------------------------------------------------
 
-形态专用的坑已经写在第四到第六部分了，这里只收跨形态的。按现象、根因、解法写，方便后来者对号入座。分四类：模型行为、工程设计、成本、合规。
+Form-factor-specific pitfalls are already covered in Parts Four through Six — this part only collects the cross-cutting ones. Written as symptom, root cause, fix, so newcomers can match their situation quickly. Four categories: model behavior, engineering design, cost, compliance.
 
-### 8.1 模型类
+### 8.1 Model-Related
 
-这类坑不会消失，只能用流程持续压制。理解成因比记住解法重要。
+This category of pitfall never fully goes away — it can only be kept suppressed with process. Understanding the cause matters more than memorizing the fix.
 
-#### 上下文爆掉，开始失忆
+#### Context Blows Up, It Starts Forgetting
 
-**现象**　跑到中后期，它开始重复之前做过的事，或者给出跟前面矛盾的判断，问"我们在找什么"答不上来。
+**Symptom**　Deep into a session, it starts repeating things it already did, or gives conclusions that contradict earlier ones, and can't answer "what are we looking for."
 
-**根因**　工具返回结果把上下文占满，早期的目标和约束被挤出有效注意力范围。这就是
-context rot 的直接表现。
+**Root cause**　Tool results fill up the context, pushing the early goals and constraints out of the effective attention range. This is
+context rot showing up directly.
 
-**解法**　三条一起上：结论即写台账，不依赖上下文记忆；大文件只喂片段走索引；子
-agent 用完即弃，把探索垃圾隔离在主控之外。分别对应 3.5、3.4、3.6。
+**Fix**　Three things together: write conclusions to the ledger immediately, don't rely on context memory; feed large files only in excerpts via the index; discard sub-agents
+after use, keeping exploration junk isolated from the main controller. These map to 3.5, 3.4, and 3.6 respectively.
 
-#### 幻觉结论，复现不出来
+#### Hallucinated Conclusions That Don't Reproduce
 
-**现象**　报了一个"确认的高危漏洞"，人去复现发现根本不存在，或者响应被它误读了。
+**Symptom**　It reports a "confirmed high-severity vulnerability," and when a human goes to reproduce it, it simply doesn't exist, or it misread the response.
 
-**根因**　确认倾向，尤其在你已经暗示"这里应该有问题"之后。子 agent
-上下文窄、压力大，幻觉率更高。
+**Root cause**　Confirmation bias, especially once you've already hinted "there should be an issue here." Sub-agents,
+with narrower context and more pressure, hallucinate at a higher rate.
 
-**解法**　证据三件套缺一不可：原始请求、原始响应、复现步骤。没有三件套的一律不进
-findings.md。主控必须独立复核每条 hit，复核不过降级为 miss
-并记原因——降级记录本身也是有价值的台账条目。再加一道 4.5 的对抗性自审。
+**Fix**　The evidence three-piece set is non-negotiable: raw request, raw response, reproduction steps. Anything without all three never goes into
+findings.md. The main controller must independently review every hit, downgrade anything that doesn't hold up to miss
+and record why — the downgrade record itself is a valuable ledger entry too. Add a pass of adversarial self-review from 4.5 on top.
 
-#### 问"有没有"，答"整体安全"
+#### Asked "Is There One," Answered "Overall Secure"
 
-**现象**　问"这个函数有没有漏洞"，得到"整体看起来安全，有一些小的关注点"，然后是一串理论问题。
+**Symptom**　Ask "does this function have a vulnerability," get back "overall looks secure, a few minor points to watch," followed by a list of theoretical concerns.
 
-**根因**　默认顺从。开放式提问下这是阻力最小的答案。
+**Root cause**　Default compliance. Under an open-ended question, this is the path of least resistance.
 
-**解法**　第七部分那十条，重点是 01 断言存在和 03 对抗性角色。
+**Fix**　The ten techniques from Part Seven, especially 01 Assert existence and 03 Adversarial persona.
 
-#### 长会话后期红线被淡忘
+#### Hard Limits Fade Late in a Long Session
 
-**现象**　跑到第三小时，它开始做第一小时绝不会做的事，比如探一个不在白名单里的子域名。
+**Symptom**　Three hours in, it starts doing things it absolutely wouldn't have done in hour one, like probing a subdomain that isn't on the allowlist.
 
-**根因**　首尾位置效应。开头那份规则对当前注意力的影响随上下文增长而衰减。
+**Root cause**　The primacy/recency effect. The opening rules block's pull on current attention fades as context grows.
 
-**解法**　任务书重申关键红线；子 agent
-任务书自带红线；长会话主动切段。但这三条都只是缓解。真正拦得住的是 3.4
-那三层工具级护栏——能用配置拦的就别只靠提示词拦。
+**Fix**　Restate the key hard limits in the task brief; sub-agent
+task briefs carry their own hard limits; proactively segment long sessions. But all three of these are only mitigations. What actually holds the line is the three-tier tool-level guardrails from 3.4
+— whatever can be blocked by config shouldn't be left to the prompt alone.
 
-### 8.2 工程类
+### 8.2 Engineering-Related
 
-这类坑的特点是不会立刻暴露，往往跑了几周才发现成本没降、效率没提升。
+What characterizes this category is that it doesn't show up immediately — often you're weeks in before noticing costs haven't dropped and efficiency hasn't improved.
 
-#### 重复测试烧钱
+#### Duplicate Testing Burns Money
 
-**现象**　第二轮、第三轮的成本没有下降，甚至更高。
+**Symptom**　Cost doesn't drop in round two or three — sometimes it's even higher.
 
-**根因**　台账写了但没被读，或者只记了 hit 没记
-miss。后者更常见，而只记命中的台账防不住任何重复。
+**Root cause**　The ledger gets written but never read, or only hits get recorded and misses
+don't. The latter is more common, and a ledger that only records hits prevents no duplication at all.
 
-**解法**　否定也记台账并写明原因；新会话开局强制读；用 3.7
-那条验收——让它说出"本轮不测什么"，说不出来就是没闭环。
+**Fix**　Record disproven hypotheses too, with the reason stated; force reading it at the start of every new session; use the acceptance check from 3.7
+— have it state "what this round won't test" — if it can't, the loop isn't closed.
 
-#### 台账写成流水账，模型读不了
+#### The Ledger Becomes a Stream of Consciousness the Model Can't Parse
 
-**现象**　台账越写越长，但读完之后还是会重复测，或者引用错误的历史结论。
+**Symptom**　The ledger keeps growing, but it still retests things after reading it, or cites the wrong historical conclusion.
 
-**根因**　写成了自由散文。模型能读懂散文，但没法可靠地按状态过滤和结构化追加。
+**Root cause**　It got written as free prose. The model can read prose, but it can't reliably filter by status or append to it in a structured way.
 
-**解法**　固定列的表格 + 固定的状态枚举 + 假设编号。过程叙述留在
-journal/，别混进 tested.md。
+**Fix**　A fixed-column table + a fixed status enum + hypothesis numbering. Keep narrative process description in
+journal/ — don't mix it into tested.md.
 
-#### 记忆层污染
+#### Memory-Layer Contamination
 
-**现象**　某个模式在新目标上反复不命中，但因为写在记忆里，每次都被优先安排，持续浪费预算。
+**Symptom**　Some pattern keeps missing on new targets, but because it's written into memory, it keeps getting prioritized every time, continuously wasting budget.
 
-**根因**　把一次偶然的发现过度泛化成了模式。因为写进了长期记忆，错误会被反复强化——这是记忆层最危险的失败方式，它会自我加固。
+**Root cause**　A one-off finding got over-generalized into a pattern. Because it's written into long-term memory, the error keeps getting reinforced — this is the memory layer's most dangerous failure mode, since it's self-reinforcing.
 
-**解法**　每条模式带命中历史和反例；只在项目收尾、经过复核之后才写入；每季度回看，命中历史为
-0 且三个项目未验证的降级或删除。
+**Fix**　Every pattern carries hit history and a counter-example; only write to memory at project wrap-up, after review; review quarterly, downgrading or deleting entries with zero hit history and unverified across three projects.
 
-#### 工具版本漂移
+#### Tool-Version Drift
 
-**现象**　上个目标能用的解包脚本、Frida 脚本、CA
-安装方案，这个目标全不好使。
+**Symptom**　The unpacking script, Frida script, or CA
+installation approach that worked on the last target doesn't work at all on this one.
 
-**根因**　移动端工具链对目标环境版本极度敏感。微信 4.1.x
-改了解密、Android 14 改了信任库位置、新版 Frida 改了 API 写法。
+**Root cause**　Mobile tooling is extremely sensitive to the target environment's version. WeChat 4.1.x
+changed the decryption, Android 14 moved the trust-store location, a newer Frida changed its API syntax.
 
-**解法**　memory/tools.md 里存的不是"用什么工具"，是「目标环境版本 ↔
-可用方案」的对应表。这是记忆层里最省时间的一部分，因为这类问题重现率极高而排查成本又不低。
+**Fix**　What memory/tools.md stores isn't "which tool to use" — it's a mapping of「target environment version ↔
+working solution」. This is the single most time-saving part of the memory layer, because this class of problem recurs constantly and debugging it isn't cheap.
 
-#### 分片重叠，两边都拿到脏数据
+#### Overlapping Slices, Both Sides Get Contaminated Data
 
-**现象**　两个子 agent 对同一个端点得出相反结论。
+**Symptom**　Two sub-agents reach opposite conclusions about the same endpoint.
 
-**根因**　分片时端点列表有交集，并发请求互相踩响应。
+**Root cause**　The endpoint lists overlapped when slicing, and concurrent requests trampled each other's responses.
 
-**解法**　派发前对各分片端点列表求交集，非空拒绝派发。这一步脚本化，别靠人看。
+**Fix**　Intersect the endpoint lists across slices before dispatch, and refuse to dispatch if the intersection isn't empty. Script this step — don't rely on a human eyeballing it.
 
-### 8.3 成本
+### 8.3 Cost
 
-#### 一轮跑下来 token 花超，或目标请求配额提前用光
+#### A Round Overshoots Its Token Budget, or the Target's Request Quota Runs Out Early
 
-**根因**　没设硬预算；大文件整读；重复测试。
+**Root cause**　No hard budget set; large files read in full; duplicate testing.
 
-**解法**　每个子 agent 独立请求上限，用完必停；索引策略；台账去重。
+**Fix**　An independent request cap per sub-agent, must stop once used up; the indexing strategy; ledger-based deduplication.
 
-还有一条优先级判断值得单独说：**纯静态清洗最划算。** 零目标请求、只烧
-token，而 token
-比请求配额便宜得多，也不触发风控。能在静态阶段排除的假设就别拿到动态阶段去试。我们现在的习惯是，一个假设进入动态验证之前，先问一句"这个能不能光读代码就否掉"。
+One more prioritization point worth its own mention: **pure static triage is the best value.** Zero target requests, burns only
+tokens, and tokens
+are far cheaper than request quota and don't trip rate limiting either. Don't take a hypothesis to the dynamic-testing stage if it can already be ruled out statically. Our habit now is to ask, before any hypothesis enters dynamic verification: "can this be ruled out just by reading the code?"
 
-| **口径**                            | **数字**                              |
+| **Basis**                            | **Number**                              |
 |-------------------------------------|---------------------------------------|
-| 单业务线深挖一轮（含子 agent 并行） | 约 300 – 800 次目标请求，数百万 token |
-| 对应 API 成本                       | ¥50 – 300；订阅制下大约是一周额度     |
-| 台账健全后第二轮起                  | 成本约降一半                          |
-| 参照：Anthropic 审 Firefox          | 112 份报告，API 花费约四千美元        |
+| One deep pass on a single business line (with parallel sub-agents) | ~300 – 800 target requests, millions of tokens |
+| Corresponding API cost                       | ¥50 – 300; roughly a week's quota under a subscription     |
+| From round two, once the ledger is solid                  | Cost drops by roughly half                          |
+| Reference: Anthropic auditing Firefox          | 112 reports, ~$4,000 in API cost        |
 
-规模差两个数量级，但单位产出的成本结构是接近的。
+Two orders of magnitude apart in scale, but the cost structure per unit of output is comparable.
 
-### 8.4 合规
+### 8.4 Compliance
 
-这一类的每一条，后果都比技术问题严重。
+Every item in this category has consequences more serious than a technical problem.
 
-#### 误触写操作
+#### Accidentally Triggering a Write Operation
 
-**现象**　验证越权时真的下了一单、改了一条数据，或者给真人发了短信验证码。
+**Symptom**　While verifying broken access control, it actually places an order, modifies a record, or sends a real person an SMS verification code.
 
-**根因**　规则没写死，或者任务书没写明"本任务的非目标"，模型自行判断为"验证需要"。
+**Root cause**　The rule wasn't locked down, or the task brief didn't state "what's out of scope for this task," so the model decided on its own that it was "needed for verification."
 
-**解法**　规则层黑名单（默认禁止加显式豁免）；任务书写明非目标；措辞用"禁止"不用"注意"，原因见
-3.2。
+**Fix**　A denylist at the rules layer (forbidden by default, needs explicit exemption); the task brief states what's out of scope; use "forbidden," not "be careful" — see
+3.2 for why the wording matters.
 
-#### 第三方数据读过头
+#### Reading More Third-Party Data Than Needed
 
-**现象**　证明了越权之后，它"为了确认范围"继续拉取了大量他人数据。
+**Symptom**　After proving broken access control, it "keeps pulling more data" from other users "to confirm the scope."
 
-**根因**　没写命中即停，它把"确认影响面"理解成了"枚举影响面"。
+**Root cause**　Stop-on-hit wasn't written down, so it interpreted "confirm the impact" as "enumerate the impact."
 
-**解法**　验证性读取不超过两条，命中即停，报告内打码。证明越权成立只需一条记录；继续拉取的性质已经从测试变成数据获取，这是定性差别不是程度差别。
+**Fix**　Verification reads capped at two records, stop on hit, redact in the report. Proving broken access control only needs one record; continuing to pull more turns testing into data harvesting — a difference in kind, not degree.
 
-#### 凭证与 PII 外流
+#### Credential and PII Leakage
 
-**现象**　token
-被粘进对话等于发给了模型厂商；明文密钥跟目录被打包带走；真实手机号进了报告正文；**截图里的
-Cookie 忘了打码**。
+**Symptom**　A token
+pasted into the conversation is equivalent to sending it to the model vendor; a plaintext key gets carried off along with the directory it's packaged into; a real phone number ends up in the report body; **a Cookie
+in a screenshot doesn't get redacted.**
 
-**根因**　没有在落盘环节做脱敏，指望人工筛选。
+**Root cause**　No redaction was done at write-to-disk time — relying on manual review instead.
 
-**解法**　落盘时只存 key 不存
-value、凭证只存指纹；密钥走系统钥匙串；.gitignore
-第一天配好；报告正文和截图强制打码。
+**Fix**　When writing to disk, store only the key, never the
+value; store only a fingerprint for credentials; keys go through the system keychain; .gitignore
+configured on day one; enforce redaction on report bodies and screenshots.
 
-几个容易漏的外发通道值得单独列出来：Chrome DevTools MCP 的性能工具会把
-trace URL 发给 Google 的 CrUX API（加
---no-performance-crux），它的遥测默认开启且独立于 Chrome
-自身设置；PentestGPT
-之类工具也默认开匿名遥测。脱敏要在源头做，人工筛选不可靠——不止一次出现报告写完了才发现有截图漏打码、需要重新处理的情况。
+A few easy-to-miss exfiltration channels worth calling out on their own: Chrome DevTools MCP's performance tooling sends
+trace URLs to Google's CrUX API (add
+--no-performance-crux), and its telemetry is on by default, independent of Chrome's
+own settings; tools like PentestGPT
+also default to anonymous telemetry being enabled. Redaction has to happen at the source — manual review isn't reliable. More than once we've finished writing a report only to discover a screenshot slipped through unredacted and had to be redone.
 
-#### 挖到的洞别人已经报过
+#### Someone Else Already Reported the Bug You Found
 
-**根因**　没做提交前的重复性检查。
+**Root cause**　No duplicate check was done before submission.
 
-**解法**　提交前搜厂商公开报告、历史公告、CVE 库比对。历史 CVE
-本来就是威胁模型的来源（7.2），这一步和开局用的是同一批材料，顺手的事。
+**Fix**　Before submitting, search the vendor's public reports, historical advisories, and cross-reference CVE databases. Historical CVEs
+are already the source material for the threat model (7.2) — this step reuses the same material from the start, so it's basically free.
 
-## 第九部分：收益、路线、红线
+## Part Nine: Payoff, Roadmap, Hard Limits
 
 
 ------------------------------------------------------------------------
 
-汇报的落点。跟纯人工和裸用 AI
-比好在哪，收益能不能量化，以及同样重要的——哪些事它做不了、不该指望它做。
+Where this lands for a report. What this is better at compared to pure manual work and using AI
+raw, whether the payoff can be quantified, and — just as important — what it can't do and shouldn't be expected to do.
 
-### 9.1 三种做法横评
+### 9.1 Comparing the Three Approaches
 
-| **维度** | **纯人工** | **裸用 AI** | **工作台** |
+| **Dimension** | **Pure manual** | **AI used raw** | **The workbench** |
 |----|----|----|----|
-| 冷启动 | 天级，摸架构靠经验 | 小时级但方向乱 | 小时级且有方向，记忆层给排序 |
-| 覆盖广度 | 受人力限制 | 广但浅，理论清单 | 广且可定向，子 agent 分片 |
-| 结论可信度 | 高 | 低，幻觉多、复现不出 | 高，证据三件套 + 独立复核 + 对抗自审 |
-| 重复成本 | 高，靠个人记忆 | 极高，每次从零 | 低，台账去重，第二轮降一半 |
-| 可交接性 | 靠口头同步 | 无 | 台账即交接文档 |
-| 合规可审计 | 靠测试人员自觉 | 无约束，会越界 | 三层护栏 + 全程留日志 |
-| 知识沉淀 | 沉淀在个人身上 | 不沉淀 | 沉淀在记忆层，跨人跨项目复用 |
-| 一次性投入 | 无 | 无 | 约 5 人日 |
+| Cold start | Days — feeling out the architecture takes experience | Hours, but unfocused | Hours, and focused — the memory layer provides prioritization |
+| Coverage breadth | Limited by headcount | Broad but shallow — theoretical lists | Broad and directable — sub-agent slicing |
+| Trustworthiness of conclusions | High | Low — heavy hallucination, doesn't reproduce | High — evidence three-piece set + independent review + adversarial self-review |
+| Cost of duplication | High, relies on individual memory | Extremely high, starts from zero every time | Low — ledger deduplication, roughly half from round two |
+| Handoff-ability | Relies on verbal sync | None | The ledger is itself a handoff document |
+| Compliance auditability | Relies on the tester's good judgment | No constraints — will cross lines | Three-tier guardrails + full logging |
+| Knowledge retention | Retained in individuals | Not retained | Retained in the memory layer, reused across people and projects |
+| One-time investment | None | None | ~5 person-days |
 
-汇报时最该点出来的是倒数第二行。纯人工的知识沉淀在个人身上，人走了就带走了；裸用
-AI
-根本不沉淀。工作台把"某某很会挖某类洞"这件事，变成了团队可以共同维护、新人可以直接继承的资产。这个性质比"快多少"更有长期价值，也更难被复制。
+The single most important line to point out in a report is the second-to-last one. With pure manual work, knowledge accumulates in individuals — when someone leaves, it leaves with them; AI
+used raw doesn't retain anything at all. The workbench turns "so-and-so is really good at finding this class of bug" into an asset a team can maintain together, and that a new hire can inherit directly. That property carries more long-term value than "how much faster it is," and it's also much harder to replicate.
 
-### 9.2 量化收益
+### 9.2 Quantifying the Payoff
 
-| **指标**           | **数字** | **口径**         |
+| **Metric**           | **Number** | **Basis**         |
 |--------------------|----------|------------------|
-| 单目标累计测试节点 | 88       | 假设数，含已否定 |
-| 其中否定结果       | 约 60%   | 构成防重复账本   |
-| 子 agent 并行批次  | 6 轮     | 3–5 路并发       |
-| 总目标请求数       | 约 2000  | 全程在速率红线内 |
+| Cumulative test nodes on one target | 88       | Hypothesis count, including disproven |
+| Of which, disproven results       | ~60%   | Forms the anti-duplication ledger   |
+| Parallel sub-agent batches  | 6 rounds     | 3–5-way concurrency       |
+| Total target requests       | ~2000  | Stayed within the rate limit throughout |
 
-三条可对外说的结论：
+Three conclusions worth stating externally:
 
-**▪ 冷启动从天级掉到小时级。** 来源是记忆层的模式复用。P-012 在一个 OTA
-目标上成立后，下一个同类目标第一天就复现了同类问题。
+**▪ Cold start drops from days to hours.** This comes from pattern reuse in the memory layer. Once P-012 was confirmed on one OTA
+target, the next similar target reproduced the same class of issue on day one.
 
-**▪ 第二轮起成本约降一半。**
-来源是台账去重，那六成否定结果每一条都省掉了一次重复投入。
+**▪ Cost drops by roughly half starting from round two.**
+This comes from ledger deduplication — every one of that 60% of disproven results saved a repeated investment.
 
-**▪ 覆盖度可证明。** 客户问"测没测
-SSRF"，能直接指出假设编号、结论和日期。这一条在交付环节的价值超出我们一开始的预期——它解决的是信任问题，不是效率问题。
+**▪ Coverage is provable.** When a client asks "did you test for
+SSRF," you can point directly to the hypothesis number, the conclusion, and the date. This point's value in the delivery phase exceeded what we expected going in — it solves a trust problem, not an efficiency problem.
 
-### 9.3 边界
+### 9.3 Boundaries
 
-这部分建议在汇报时讲完整，因为它决定了这套东西该被怎么定位：它是放大器，不是替代品。以下四件事流程上强制要求人来做，不是"最好人来做"。
+Worth covering this part in full in a report, because it determines how this whole thing should be positioned: it's an amplifier, not a replacement. The following four things are process-mandated to be done by a human — not "preferably done by a human."
 
-| **人必须做** | **为什么模型做不了** |
+| **What a human must do** | **Why the model can't** |
 |----|----|
-| 判断什么算漏洞、影响多大 | 依赖业务语境。同一个信息泄露，在内部系统和对外系统上定级完全不同。模型没有这个语境，给出的定级基本靠猜 |
-| 复现确认 | 确认倾向会让它报出复现不了的命中。独立复核是误报率唯一有效的控制点 |
-| 定级与措辞 | 报告要符合厂商模板和法律语境。起草可以交给它，定级和措辞必须人改 |
-| 决定什么时候停 | 这是合规判断不是技术判断。"再多拉一条数据确认一下"在它看来合理，在法律上不是 |
+| Judge what counts as a vulnerability, and how severe it is | Depends on business context. The same information leak is rated completely differently on an internal system versus a public-facing one. The model has no access to this context, so its ratings are basically guesses |
+| Confirm reproduction | Confirmation bias makes it report hits that don't reproduce. Independent review is the only effective control on false-positive rate |
+| Severity rating and wording | The report has to match the vendor's template and legal context. Drafting can be handed to it; rating and wording must be changed by a human |
+| Decide when to stop | This is a compliance judgment, not a technical one. "Pull one more record just to confirm" seems reasonable to it — it isn't, legally |
 
 AI
-把挖洞从体力活变成了编排活。通读代码、枚举端点、重放请求、起草报告，这些被接管了。剩下的竞争力在三件事上：判断哪个假设值得跑、哪个结果值得信、哪个点必须停。这三件事永远是人的。工作台的全部设计，就是把人的时间从前者腾出来，集中到后者。
+turns finding vulnerabilities from manual labor into orchestration work. Reading through code, enumerating endpoints, replaying requests, drafting reports — all of that gets taken over. What's left as the real skill comes down to three things: judging which hypothesis is worth running, which result is worth trusting, and which point requires stopping. Those three things are always the human's. The whole design of the workbench is about freeing up a human's time from the former and concentrating it on the latter.
 
-### 9.4 三周路线
+### 9.4 A Three-Week Roadmap
 
-#### 第一周　搭环境
+#### Week One　Build the Environment
 
-**▪** 接模型，配好主备切换和探活
+**▪** Connect the model, set up primary/fallback switching and health checks
 
-**▪** 写 CLAUDE.md，六条红线抄 3.2
+**▪** Write CLAUDE.md, copying the six hard limits from 3.2
 
-**▪** 建目录骨架，配 .gitignore
+**▪** Build the directory skeleton, configure .gitignore
 
-**▪** 装代理和证书，配三层 scope 护栏
+**▪** Install the proxy and certificate, configure the three-tier scope guardrails
 
-**▪** 拿 XBOW 的 validation-benchmarks 起一个本地靶场练手，别碰真实目标
+**▪** Spin up a local range with XBOW's validation-benchmarks to practice on — don't touch a real target yet
 
-验收：3.7 清单前八条全过。
+Acceptance: the first eight items on the 3.7 checklist all pass.
 
-#### 第二周　第一个真实目标
+#### Week Two　The First Real Target
 
-**▪** 选 Web 形态，理由见 6.7
+**▪** Choose the Web form factor — see 6.7 for why
 
-**▪** 按 7.2 让模型从历史 CVE 生成威胁模型
+**▪** Follow 7.2 to have the model generate a threat model from historical CVEs
 
-**▪** 白盒提取两张表，人工挑三个最可疑的自报字段
+**▪** White-box extraction of the two tables, manually pick the three most suspicious self-reported fields
 
-**▪** 黑盒验证 → 对抗性自审 → 人复核
+**▪** Black-box verification → adversarial self-review → human review
 
-**▪** 让它按厂商模板出报告草稿，人只改定级和措辞
+**▪** Have it draft the report against the vendor's template, with a human changing only the rating and wording
 
-验收：一个能走完的闭环，比十个半途而废的深挖有用。
+Acceptance: one closed loop that runs start to finish is worth more than ten deep dives that stall out halfway.
 
-#### 第三周起　沉淀与放大
+#### From Week Three On　Retention and Scaling
 
-**▪** 项目收尾写 patterns.md，带命中历史和反例
+**▪** At project wrap-up, write patterns.md, with hit history and counter-examples
 
-**▪** tools.md 记下环境版本对应关系
+**▪** Log environment-version mappings in tools.md
 
-**▪** 开始用子 agent 并行，学会看预算叫停
+**▪** Start using parallel sub-agents, learn to watch the budget and call a halt
 
-**▪** 扩到小程序形态
+**▪** Expand to the mini-program form factor
 
-验收：3.7 那条"台账能影响行为"通过。
+Acceptance: the "the ledger actually influences behavior" check from 3.7 passes.
 
-| **两条提醒**　不要跳过第二周直接做第三周。没跑完过一个完整闭环就去搭并行编排，结果是并行地产出一堆不可信的结论。先把单线程的质量做实，再谈规模——这也是 Firefox 那个案例的做法，跑通流程之后才扩到 6000 个文件。另外，第一个目标选 Web，这是唯一能在半天内看到结果的形态，而团队对新方法的耐心通常也就这么长。 |
+| **Two reminders**　Don't skip week two and jump straight to week three. Setting up parallel orchestration before you've ever run a complete loop just gets you a pile of untrustworthy conclusions, produced in parallel. Get single-threaded quality solid first, then talk about scale — this is also exactly what the Firefox case study did, expanding to 6,000 files only after the pipeline was working. Also, pick Web for the first target — it's the only form factor where you can see results within half a day, and a team's patience for a new method usually doesn't last much longer than that. |
 |----|
 
-### 9.5 合规红线
+### 9.5 Compliance Hard Limits
 
-本文讨论的全部方法，适用前提只有一个：已获得书面授权、范围明确、全程可审计。
+Every method discussed in this piece has exactly one precondition for applying: written authorization obtained, scope clearly defined, fully auditable throughout.
 
-| **#** | **红线** | **具体要求** |
+| **#** | **Hard limit** | **Specific requirement** |
 |----|----|----|
-| 1 | 目标白名单 | 域名 / AppID / 包名列表，出列表禁止发起任何请求。同时落在三层工具配置里，不只写在提示词 |
-| 2 | 只读优先 | 下单 / 支付 / 改密 / 删除 / 发消息 / 提交表单，一律禁止 |
-| 3 | 速率上限 | 间隔 ≥ 1.2 秒、单批 ≤ 500、全程留日志，并行时按全局算 |
-| 4 | 验证码禁触发 | 短信 / 邮件 / 语音，对真人构成骚扰 |
-| 5 | 第三方数据 ≤ 2 条 | 验证性读取，命中即停，报告内打码 |
-| 6 | 凭证与 PII 不外流 | 不进正文、不进对话、不进版本库、不传第三方模型。在落盘环节脱敏，截图同样要打码 |
+| 1 | Target allowlist | A list of domains / AppIDs / package names — any request outside the list is forbidden. This lands in the three-tier tool config as well, not just in the prompt |
+| 2 | Read-only by default | Placing orders / payment / password change / deletion / sending messages / form submission — all forbidden |
+| 3 | Rate cap | Interval ≥ 1.2 seconds, ≤ 500 per batch, logged throughout, calculated globally when running in parallel |
+| 4 | Never trigger verification codes | SMS / email / voice — this harasses a real person |
+| 5 | Third-party data ≤ 2 records | Verification reads only, stop on hit, redact in the report |
+| 6 | Credentials and PII never leave the workspace | Never in the body text, never in the conversation, never in version control, never sent to a third-party model. Redact at write-to-disk time — screenshots need redaction too |
 
-这些不是建议，是默认禁止，需要豁免就在任务书里显式写明并留痕。模型没有法律意识，边界是人写进配置它才知道。没写，它会自己判断，通常判错。
+These aren't suggestions — they're forbidden by default, and any exemption needed must be explicitly written into the task brief and logged. The model has no sense of legality; it only knows a boundary if a human writes it into the config. If it isn't written down, the model decides for itself, and usually decides wrong.
 
-## 附录 A：可直接抄的模板
+## Appendix A: Templates You Can Copy Directly
 
 
 ------------------------------------------------------------------------
 
-把正文里的模板集中在这里，方便打印后直接用。
+The templates from the body text, collected here for easy printing and direct use.
 
-### A.1 目录骨架（最小集）
+### A.1 Directory Skeleton (Minimal Set)
 
 > workbench/
 >
-> ├── CLAUDE.md # 一页纸红线
+> ├── CLAUDE.md # one-page hard limits
 >
-> ├── .mcp.json # MCP 声明
+> ├── .mcp.json # MCP declarations
 >
 > ├── memory/ # patterns / techniques / tools
 >
 > └── targets/<slug>/
 >
-> ├── scope.md # 授权书摘要
+> ├── scope.md # authorization summary
 >
-> ├── threat-model.md # 一页威胁模型，从历史 CVE 生成
+> ├── threat-model.md # one-page threat model, generated from historical CVEs
 >
 > ├── assets/ # routes / identity / invariants
 >
-> ├── capture/index.jsonl # 结构化流量索引
+> ├── capture/index.jsonl # structured traffic index
 >
-> ├── decompiled/INDEX* # 文件清单 + 关键词热力
+> ├── decompiled/INDEX* # file listing + keyword heat map
 >
-> ├── journal/ # 按天流水
+> ├── journal/ # daily log
 >
-> ├── tested.md # 假设矩阵 ← 防重复核心
+> ├── tested.md # hypothesis matrix ← the anti-duplication core
 >
-> └── findings.md # 命中项 + 证据三件套
+> └── findings.md # hits + evidence three-piece set
 
-### A.2 tested.md 表头
+### A.2 tested.md Header
 
-> | ID | 面 | 假设 | 状态 | 证据 | 日期 |
+> | ID | Surface | Hypothesis | Status | Evidence | Date |
 >
 > |----|----|------|------|------|------|
 >
-> # 状态只允许三个值：
+> # Status allows only three values:
 >
-> # hit 命中
+> # hit confirmed
 >
-> # miss 已测且否定（必须写否定原因）
+> # miss tested and disproven (reason must be stated)
 >
-> # blocked 测了但被拦 / 无法判定
+> # blocked tested but blocked / undecidable
 
-### A.3 子 agent 任务书四要素
+### A.3 Four Elements of a Sub-Agent Task Brief
 
-| **要素**     | **要求**                                        |
+| **Element**     | **Requirement**                                        |
 |--------------|-------------------------------------------------|
-| ① 精确目标   | 到端点或文件级别，并写明"不得扩展到其他端点"    |
-| ② 红线重申   | 必须抄一遍，子 agent 读不到主控的 CLAUDE.md     |
-| ③ 已否定清单 | 从 tested.md 摘 miss 条目，防止重复             |
-| ④ 判据与预算 | 什么算命中（可判定的条件）+ 命中即停 + 请求上限 |
+| ① Precise target   | Down to the endpoint or file level, and state "do not expand to other endpoints"    |
+| ② Restate hard limits   | Must be copied in full — a sub-agent can't read the main controller's CLAUDE.md     |
+| ③ Already-disproven list | Pulled from tested.md's miss entries, to prevent duplication             |
+| ④ Criteria and budget | What counts as a hit (a decidable condition) + stop-on-hit + request cap |
 
-回报格式里记得写：不要给安全建议，不要给修复方案。
+Remember to include in the report format: no security advice, no remediation suggestions.
 
-### A.4 三条常用提示词
+### A.4 Three Commonly Used Prompts
 
-**① 冷启动：从记忆层预测本目标的薄弱面**
+**① Cold start: predict this target's weak points from the memory layer**
 
-> 读 memory/patterns.md 和 targets/<slug>/threat-model.md。
+> Read memory/patterns.md and targets/<slug>/threat-model.md.
 >
-> 从 patterns 里挑出最可能命中的 5 条，按触发条件吻合度排序。
+> Pick the 5 patterns from patterns most likely to hit, ranked by how well the trigger conditions match.
 >
-> 每条给出：编号名称 / 吻合依据 / 第一个验证动作 / 反例是否成立。
+> For each, give: number and name / basis for the match / first verification action / whether the counter-example holds.
 >
-> 不要输出泛泛的安全建议。
+> Don't output generic security advice.
 
-**② 威胁模型：从历史 CVE 生成**
+**② Threat model: generate from historical CVEs**
 
-> 以下是 [项目名] 的历史 CVE 描述：[粘贴]
+> Below are the historical CVE descriptions for [project name]: [paste]
 >
-> 输出一页纸威胁模型，必须包含：最常见的漏洞类别（按频次）、
+> Output a one-page threat model that must include: the most common vulnerability categories (by frequency),
 >
-> 最薄弱的信任边界及依据、入口点清单、攻击者模型、高危操作清单。
+> the weakest trust boundaries and the basis for them, a list of entry points, the attacker model, a list of high-severity operations.
 >
-> 每一条都要能指回上面的 CVE 描述。不要写通用安全建议。
+> Every point must be traceable back to the CVE descriptions above. Don't write generic security advice.
 
-**③ 不变量：拆两步问**
+**③ Invariants: split into two questions**
 
-> 第一步：列出这个模块所有隐含的安全假设。只列，不判断。每条一行，编号。
+> Step one: list every implicit security assumption in this module. Just list them, don't judge. One per line, numbered.
 >
-> 第二步：假设 #N「...」。在哪条代码路径上它可能被违反？
+> Step two: assumption #N "...". On which code path might it be violated?
 >
-> 给出具体函数和行号，以及攻击者需要的前置条件。
+> Give the specific function and line number, and what preconditions the attacker would need.
 
-### A.5 最小闭环自检
+### A.5 Minimal Closed-Loop Self-Check
 
-**1.** 主备模型各跑通一次真实工具调用
+**1.** Both the primary and fallback model complete one real tool call each
 
-**2.** 新会话里模型能准确复述六条红线
+**2.** In a new session, the model can accurately recite all six hard limits
 
-**3.** 代理能抓到目标明文，且白名单外不落盘
+**3.** The proxy can capture the target's traffic in cleartext, and nothing outside the allowlist is written to disk
 
-**4.** 三层 scope 护栏各验一次，关掉上层后下层能兜住
+**4.** All three scope-guardrail tiers verified individually, with lower tiers catching what upper tiers miss when disabled
 
-**5.** 模型能从索引检索出指定接口的请求模板
+**5.** The model can retrieve the request template for a specified endpoint from the index
 
-**6.** 模型能读 memory 输出 5 条模式预测及依据
+**6.** The model can read memory and output 5 pattern predictions with rationale
 
-**7.** 一次子 agent 派发能回收结构化结论且守住请求上限
+**7.** One sub-agent dispatch retrieves a structured conclusion and respects the request cap
 
-**8.** 台账能影响行为：模型能主动说出"本轮跳过哪些已否定项"
+**8.** The ledger influences behavior: the model can proactively state "which already-disproven items this round is skipping"
 
-**9.** 大文件走索引，不被整读
+**9.** Large files go through the index, never read in full
 
-### A.6 十条提示词技巧速查
+### A.6 Ten Prompting Techniques, Quick Reference
 
-| **#** | **技巧**           | **一句话**                                  |
+| **#** | **Technique**           | **In one line**                                  |
 |--------|--------------------|---------------------------------------------|
-| 01     | 断言漏洞存在       | "这里肯定有 2‒3 个问题"，把它从评估推向搜索 |
-| 02     | 要利用路径不要评级 | 要 PoC 和前置条件，不要风险分数             |
-| 03     | 对抗性角色         | 红队而不是审计员；只有可利用的才算交付物    |
-| 04     | 假锚点             | "我已经找到一个了"，制造社会证明压力        |
-| 05     | 问题反转           | "你会怎么打破它"，而不是"这安全吗"          |
-| 06     | 不变量分解         | 先列假设，再逐条问是否被违反。两步          |
-| 07     | 假设开发者犯了错   | 改变它对代码质量的先验，破解合理化倾向      |
-| 08     | 与标准实现对比     | 借它训练数据里的正确模式做差异比对          |
-| 09     | 逐层追问           | "还有更隐蔽的吗"，多问几轮                  |
-| 10     | 显式攻击者建模     | 写死能力约束，直接消灭误报                  |
+| 01     | Assert the vulnerability exists       | "There are definitely 2‒3 issues here" — pushes it from evaluation into search |
+| 02     | Ask for an exploit path, not a rating | Want a PoC and preconditions, not a risk score             |
+| 03     | Adversarial persona         | Red team, not auditor; only exploitable findings count as a deliverable    |
+| 04     | False anchor             | "I've already found one" — manufactures social-proof pressure        |
+| 05     | Flip the question           | "How would you break it," not "is this secure"          |
+| 06     | Invariant decomposition         | List hypotheses first, then ask about each one being violated. Two steps          |
+| 07     | Assume the developer made a mistake   | Shifts its prior on code quality, breaks the rationalization tendency      |
+| 08     | Compare against the standard implementation     | Borrows the correct patterns in its training data for a diff comparison          |
+| 09     | Keep asking, layer by layer           | "Anything more subtle," several rounds running                  |
+| 10     | Explicit attacker modeling     | Lock down capability constraints, directly kills false positives                  |
 
-### A.7 证据三件套与案例证据模板
+### A.7 The Evidence Three-Piece Set and Case-Evidence Template
 
-命中项进 findings.md 的最低要求：
+Minimum requirements for a hit entering findings.md:
 
-| **件**   | **内容**                       |
+| **Piece**   | **Content**                       |
 |----------|--------------------------------|
-| 原始请求 | 完整报文，凭证打码但保留结构   |
-| 原始响应 | 完整报文，第三方 PII 打码      |
-| 复现步骤 | 从零开始的操作序列，含环境版本 |
+| Raw request | Complete message, credentials redacted but structure preserved   |
+| Raw response | Complete message, third-party PII redacted      |
+| Reproduction steps | A from-scratch sequence of actions, including environment version |
 
-客户端 / APP 类案例另加四环（取自
-6.8）：触发源、进程内回显、会话凭据、收件端落地。缺一环不定级。
+Client / APP-class case studies add four more rings (drawn from
+6.8): trigger source, in-process echo, session credential, delivery endpoint landing. Missing any one ring means no severity rating.
 
-## 附录 B：来源清单
+## Appendix B: Source List
 
 
 ------------------------------------------------------------------------
 
-按主题分组。工具版本和平台接口每月都在变，动手前先跑通最小链路再投入。
+Grouped by topic. Tool versions and platform interfaces change monthly — verify the minimal chain still works before investing real time.
 
-#### 方法论
+#### Methodology
 
-| **内容** | **来源** | **日期** |
+| **Content** | **Source** | **Date** |
 |----|----|----|
-| 本文方法论主线：token 预算、切片、验证环、十条提示词技巧、Parse Server / ElysiaJS / harden-runner 案例 | Devansh《Needle in the Haystack: LLMs for Vulnerability Research》devansh.bearblog.dev | 2026-03 |
-| 规模化案例：112 份报告、约四千美元 API 花费 | Anthropic × Mozilla 的 Firefox 审计公开说明 | 2026 |
-| 智能体做漏洞研究的先例 | Google Project Zero《Big Sleep》系列 | 2024‒2026 |
-| 白盒审计三阶段与对抗性自审 | Andrew Hoffman《White-Box Penetration Testing with Claude Code》 | 2025‒2026 |
-| 确定性验证、目标去重、validation-benchmarks（104 题靶场） | XBOW 官方博客与 xbow-engineering/validation-benchmarks | 2025‒2026 |
-| Web 安全方法论与靶场 | PortSwigger Web Security Academy | 持续更新 |
+| This piece's methodology backbone: token budget, slicing, the verification loop, the ten prompting techniques, the Parse Server / ElysiaJS / harden-runner case studies | Devansh, "Needle in the Haystack: LLMs for Vulnerability Research," devansh.bearblog.dev | 2026-03 |
+| The at-scale case study: 112 reports, ~$4,000 in API cost | Anthropic × Mozilla's public write-up of the Firefox audit | 2026 |
+| Precedent for agents doing vulnerability research | Google Project Zero's "Big Sleep" series | 2024‒2026 |
+| The white-box audit three-phase method and adversarial self-review | Andrew Hoffman, "White-Box Penetration Testing with Claude Code" | 2025‒2026 |
+| Deterministic verification, target deduplication, validation-benchmarks (104-challenge range) | XBOW's official blog and xbow-engineering/validation-benchmarks | 2025‒2026 |
+| Web security methodology and practice range | PortSwigger Web Security Academy | Continuously updated |
 
 #### Web
 
-| **内容** | **来源** | **日期** |
+| **Content** | **Source** | **Date** |
 |----|----|----|
-| Chrome DevTools MCP：工具清单、配置、限制 | ChromeDevTools/chrome-devtools-mcp 的 README、configuration.md、advanced-usage.md、troubleshooting.md、issue #848 | 2026 |
-| Burp 官方 MCP | PortSwigger/mcp-server（BApp Store 上架） | 2026-05 |
-| Caido 的 agent 可审计性论点 | Caido 官方博客《Agentic Pentesting with MCP》 | 2026-07 |
-| mitmproxy addon 事件钩子、HAR 导出、选项 | docs.mitmproxy.org 官方文档与 examples/contrib | 持续更新 |
-| 前端白盒工具 | denandz/sourcemapper、BishopFox/jsluice、GerbenJavado/LinkFinder、PortSwigger/js-miner | — |
-| PentestGPT 现状与 benchmark 成绩 | GreyDGL/PentestGPT 与 USENIX Security '24 论文 | 2026 |
+| Chrome DevTools MCP: tool list, configuration, limitations | ChromeDevTools/chrome-devtools-mcp's README, configuration.md, advanced-usage.md, troubleshooting.md, issue #848 | 2026 |
+| Burp's official MCP | PortSwigger/mcp-server (listed on the BApp Store) | 2026-05 |
+| Caido's argument for agent auditability | Caido's official blog, "Agentic Pentesting with MCP" | 2026-07 |
+| mitmproxy addon event hooks, HAR export, options | docs.mitmproxy.org official documentation and examples/contrib | Continuously updated |
+| Frontend white-box tools | denandz/sourcemapper, BishopFox/jsluice, GerbenJavado/LinkFinder, PortSwigger/js-miner | — |
+| PentestGPT's current state and benchmark results | GreyDGL/PentestGPT and the USENIX Security '24 paper | 2026 |
 
-#### 小程序与 Electron
+#### Mini-Programs and Electron
 
-| **内容** | **来源** | **日期** |
+| **Content** | **Source** | **Date** |
 |----|----|----|
-| wxapkg 格式 | wxappUnpacker 的 DETAILS.md 与 wuWxapkg.js 实现 | — |
-| PC 端解密算法 | superdashu/pc_wxapkg_decrypt_python、BlackTrace/pc_wxapkg_decrypt | — |
-| 包路径新旧对照 | zhuweiyou/wxapkg、onekb/wxapkg_path | 2026 |
-| 分包规则、网络能力与证书要求、自动化 SDK | 微信官方文档：使用分包 / 网络 / 小程序自动化 / Minium | 持续更新 |
-| 合成输入标志位与推荐替代方案 | 微软 KBDLLHOOKSTRUCT 文档；Raymond Chen《The Old New Thing》 | 2025-03 |
-| 微信 4.1.5 隐藏 UI 树的行为 | Zeeklog 与知乎的社区分析（无官方确认） | 2026 |
-| asar 格式、完整性校验、fuses、安全配置 | @electron/asar README；Electron 官方 security / asar-integrity / fuses 文档 | 持续更新 |
-| Electron 静态检查与插桩 | doyensec/electronegativity wiki；Doyensec《Instrumenting Electron Apps》 | 2018‒2026 |
+| The wxapkg format | wxappUnpacker's DETAILS.md and the wuWxapkg.js implementation | — |
+| PC-side decryption algorithm | superdashu/pc_wxapkg_decrypt_python, BlackTrace/pc_wxapkg_decrypt | — |
+| Old vs. new package-path mapping | zhuweiyou/wxapkg, onekb/wxapkg_path | 2026 |
+| Sub-package rules, network capability and certificate requirements, automation SDK | WeChat's official documentation: using sub-packages / network / mini-program automation / Minium | Continuously updated |
+| Synthetic-input flag bits and the recommended alternative | Microsoft's KBDLLHOOKSTRUCT documentation; Raymond Chen, "The Old New Thing" | 2025-03 |
+| WeChat 4.1.5's UI-tree-hiding behavior | Community analysis from Zeeklog and Zhihu (no official confirmation) | 2026 |
+| The asar format, integrity validation, fuses, security config | @electron/asar README; Electron's official security / asar-integrity / fuses documentation | Continuously updated |
+| Electron static analysis and instrumentation | doyensec/electronegativity wiki; Doyensec, "Instrumenting Electron Apps" | 2018‒2026 |
 
 #### APP
 
-| **内容** | **来源** | **日期** |
+| **Content** | **Source** | **Date** |
 |----|----|----|
-| jadx 完整参数 | skylot/jadx README 的 usage 块 | 持续更新 |
-| apktool 命令与重签名要求 | apktool.org 官方文档 | 持续更新 |
-| MobSF 部署与 REST API | MobSF 官方 docker 文档与 mobsf/MobSF/urls.py | 2026 |
-| 逆向工具 MCP | zinja-coder 的 jadx-ai-mcp / jadx-mcp-server / apktool-mcp-server；dnakov/frida-mcp | 2026 |
-| Frida server/gadget、JS API | frida.re 官方文档 android / gadget / javascript-api | 持续更新 |
-| pinning 的七个 hook 点 | sensepost/objection 的 agent/src/android/pinning.ts 源码 | — |
-| 工程化 unpinning 脚本集 | httptoolkit/frida-interception-and-unpinning | 2026 |
-| 用户证书不被信任、NSC schema | Android 开发者博客《Changes to Trusted Certificate Authorities》；官方 Network Security Config 文档 | 2016 / 持续 |
-| Android 14 改走 Conscrypt APEX | NCC Group / Fox-IT 的工具发布说明 | 2026 |
-| 脱壳工具 | hluwa/frida-dexdump（已归档）、CodingGay/BlackDex、hanbinglengyue/FART | — |
-| 反 Frida 检测与 text 段比对 | darvincisec/detectfrida；CrackerCat/strong-frida | — |
-| Frida 只能改方法边界这条限制 | HTTP Toolkit《Android reverse engineering》 | — |
-| Claude Code 侧的现成封装 | incogbyte/android-reverse-engineering-claude-skill；TheQmaks/areclaw | 2026 |
+| Full jadx parameters | The usage block in skylot/jadx's README | Continuously updated |
+| apktool commands and re-signing requirements | apktool.org's official documentation | Continuously updated |
+| MobSF deployment and REST API | MobSF's official docker documentation and mobsf/MobSF/urls.py | 2026 |
+| Reverse-engineering MCPs | zinja-coder's jadx-ai-mcp / jadx-mcp-server / apktool-mcp-server; dnakov/frida-mcp | 2026 |
+| Frida server/gadget, JS API | frida.re's official android / gadget / javascript-api documentation | Continuously updated |
+| The seven pinning hook points | Source of sensepost/objection's agent/src/android/pinning.ts | — |
+| A more engineered unpinning script set | httptoolkit/frida-interception-and-unpinning | 2026 |
+| User certificates not being trusted, the NSC schema | Android Developers Blog, "Changes to Trusted Certificate Authorities"; official Network Security Config documentation | 2016 / ongoing |
+| Android 14 moving to Conscrypt APEX | NCC Group / Fox-IT's tool release notes | 2026 |
+| Unpacking tools | hluwa/frida-dexdump (archived), CodingGay/BlackDex, hanbinglengyue/FART | — |
+| Anti-Frida detection and .text-segment comparison | darvincisec/detectfrida; CrackerCat/strong-frida | — |
+| The "Frida can only modify method boundaries" limitation | HTTP Toolkit, "Android reverse engineering" | — |
+| Ready-made wrappers on the Claude Code side | incogbyte/android-reverse-engineering-claude-skill; TheQmaks/areclaw | 2026 |
 
-#### 价格与能力数据
+#### Pricing and Capability Data
 
-| **内容** | **来源** | **日期** |
+| **Content** | **Source** | **Date** |
 |----|----|----|
-| Claude / OpenAI 价格 | 各自官方定价页 | 2026-09 |
-| GLM / Kimi / DeepSeek / Qwen 价格 | 各开放平台官网定价页 | 2026-08 ～ 09 |
-| 能力指数 | Artificial Analysis Coding Agent Index | 2026-09-18 |
-| 大陆使用门槛 | 极客公园《Claude Code 国内用不了？》 | 2026-07-30 |
-| 本团队实战数据 | 内部测试台账（88 节点 / 6 轮子 agent / 约 2000 请求） | 2026-09 |
+| Claude / OpenAI pricing | Their respective official pricing pages | 2026-09 |
+| GLM / Kimi / DeepSeek / Qwen pricing | Each open platform's own official pricing page | 2026-08 ～ 09 |
+| Capability index | Artificial Analysis Coding Agent Index | 2026-09-18 |
+| Mainland China usage barriers | GeekPark, "Can't Use Claude Code in China?" | 2026-07-30 |
+| This team's field data | Internal test ledger (88 nodes / 6 sub-agent rounds / ~2000 requests) | 2026-09 |
 
-#### 几处本文明确存疑、未采信的说法
+#### A Few Claims This Piece Explicitly Flags as Unconfirmed and Doesn't Rely On
 
-写进内部材料时请一并保留这几条，它们比结论更能防止后来者踩坑：
+Worth keeping these when writing this up into internal material — they prevent newcomers from tripping over the same things more effectively than the conclusions do:
 
-**1.** 微信 4.1.x 之后 wxapkg
-加密的具体变更没有公开文档，只有"某工具已适配"的说法。
+**1.** There's no public documentation of exactly what changed in wxapkg
+encryption after WeChat 4.1.x — only claims that "some tool has already been updated for it."
 
-**2.** 没有任何公开资料证明微信专门过滤了 SendInput；可证实的是 OS
-级注入标志和 4.1.5 隐藏 UI 树两件事。
+**2.** No public material proves WeChat specifically filters SendInput; what can be confirmed is the OS-level
+injection flag and the 4.1.5 UI-tree-hiding behavior — two separate things.
 
-**3.** --disable-gpu 不是微信调试开关，它是 Chromium
-禁用硬件加速的标准参数。
+**3.** --disable-gpu is not a WeChat debug switch — it's Chromium's
+standard flag for disabling hardware acceleration.
 
-**4.** 没有权威资料表明小程序运行时做了 SSL
-Pinning，官方文档描述的是标准 CA 校验。
+**4.** No authoritative material shows the mini-program runtime does SSL
+pinning — the official documentation describes standard CA validation.
 
-**5.** ffuf 和 nuclei 都没有官方 MCP，能搜到的全是社区封装。
+**5.** Neither ffuf nor nuclei has an official MCP — everything findable is a community wrapper.
 
-**6.** 跨工具的通用 DEX 合并方案不存在，各脱壳工具产物格式各不相同。
+**6.** There's no cross-tool generic DEX-reassembly solution — each unpacking tool's output format differs.
 
-#### 使用声明
+#### Usage Statement
 
 ------------------------------------------------------------------------
 
-本文档为内部技术分享材料，所述方法仅适用于已获书面授权、范围明确、全程可审计的安全测试场景。
+This document is internal technical-sharing material. The methods it describes apply only to security testing that has written authorization, a clearly defined scope, and is fully auditable throughout.
 
-文中所有工具与手法均引自公开资料，文档的价值在于把它们编排成一条可复用的工程流程。
+Every tool and technique in this piece is drawn from public sources — the value of this document is in assembling them into a reusable engineering pipeline.
 
-未获授权的目标，本文没有一条方法是适用的。
+None of these methods apply to unauthorized targets.
 
 ------------------------------------------------------------------------
 
-AI 编程智能体工作台 · 搭建与实战
+AI Coding Agent Workbench · Setup and Field Practice
