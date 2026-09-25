@@ -7,6 +7,11 @@
 #   repo_url      GitHub repo URL
 #   language      Primary language (optional)
 
+- name: "promptprobe"
+  description: "CLI for testing LLM-backed endpoints against a categorized library of prompt-injection and jailbreak payloads (direct override, role-play jailbreaks, encoding obfuscation, indirect/tool-use injection, system-prompt exfiltration), with console/Markdown/JSON reporting."
+  repo_url: "https://github.com/HAYES-cyber/promptprobe"
+  language: "Python"
+
 - name: "2026FastjsonPoC"
   description: "Fastjson 1.2.x RCE verification scanner covering 151 gadget-chain/version combinations across the known public disclosure history; confirms exploitability via out-of-band command echo."
   repo_url: "https://github.com/HAYES-cyber/2026FastjsonPoC"

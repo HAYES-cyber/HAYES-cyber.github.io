@@ -1,9 +1,10 @@
 ### Hi, I'm Bryce Alan Hayes 👋
 
-Security researcher focused on [research area, e.g. web application security & IoT firmware]. [Optional second sentence: current affiliation / what you're working on now.]
+Security researcher working both sides of AI and offense — using AI-assisted methodology to accelerate vulnerability research, and studying the security of AI systems themselves (prompt injection, jailbreaks, adversarial robustness, RAG data exposure, AI agent authorization boundaries).
 
-- 🔭 Currently researching **[focus area]**
-- 📫 Reach me at **[you@example.com](mailto:you@example.com)** — PGP key on my [contact page](https://brycealanhayes.com/contact/)
+- 🔭 Currently: remote AI Red Teaming (jailbreak / prompt-injection testing against frontier LLMs) + AI-assisted web application vulnerability research
+- 🎓 B.S. Information Science and Technology (Systems & Network Security) — Georgia Gwinnett College, 2025
+- 📫 Reach me at **[1092bunk@gmail.com](mailto:1092bunk@gmail.com)**
 - ✍️ Write-ups, CVE disclosures, and bounty reports: **[brycealanhayes.com](https://brycealanhayes.com)**
 
 #### Selected CVEs
@@ -18,11 +19,16 @@ Full list with CVSS scores, vendor advisories, and write-ups: [brycealanhayes.co
 
 #### Bug Bounty
 
-Public reports from Kuaishou SRC and JD SRC: [brycealanhayes.com/bounty](https://brycealanhayes.com/bounty/)
+- Public reports from Kuaishou SRC and JD SRC: [brycealanhayes.com/bounty](https://brycealanhayes.com/bounty/)
+- [Bugcrowd profile](https://bugcrowd.com/h/equa1) — 8 validated vulnerabilities, 100% accuracy, Hall of Fame on Pantheon and HostGator LATAM Bug Bounty
+
+#### Tools
+
+- [promptprobe](https://github.com/HAYES-cyber/promptprobe) — CLI for testing LLM-backed endpoints against prompt-injection / jailbreak payloads
+- Full list: [brycealanhayes.com/tools](https://brycealanhayes.com/tools/)
 
 #### Links
 
 - Blog: [brycealanhayes.com](https://brycealanhayes.com)
 - GitHub: [github.com/HAYES-cyber](https://github.com/HAYES-cyber)
-- LinkedIn: [linkedin.com/in/USERNAME](#)
-- HackerOne: [hackerone.com/USERNAME](#)
+- Bugcrowd: [bugcrowd.com/h/equa1](https://bugcrowd.com/h/equa1)
