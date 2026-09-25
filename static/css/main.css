@@ -230,6 +230,8 @@ h1, h2, h3, h4 { letter-spacing: -0.01em; line-height: 1.25; }
   font-weight: 700;
   flex-shrink: 0;
 }
+.brand-mark-photo { padding: 0; overflow: hidden; background: var(--bg-alt); }
+.brand-mark-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .site-header nav { flex: 1; display: flex; justify-content: center; }
 .site-header ul { list-style: none; display: flex; gap: 4px; margin: 0; padding: 0; }
@@ -591,6 +593,8 @@ h1, h2, h3, h4 { letter-spacing: -0.01em; line-height: 1.25; }
   font-size: 1.2rem;
   margin-bottom: 14px;
 }
+.profile-avatar-photo { padding: 0; overflow: hidden; background: var(--bg-alt); }
+.profile-avatar-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .profile-card h3 { margin: 0 0 2px; font-size: 1.05rem; }
 .profile-role { color: var(--fg-muted); font-size: 0.88rem; margin: 0 0 16px; }
 .profile-links { list-style: none; margin: 0; padding: 14px 0 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }

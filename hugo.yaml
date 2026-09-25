@@ -58,6 +58,7 @@ menu:
 params:
   author: "Bryce Alan Hayes"
   handle: "HAYES-cyber"
+  avatar: "/img/avatar.jpg"
   tagline: "Security researcher focused on web application security, business logic flaws, and deserialization/RCE research."
   email: "you@example.com"
   pgpFingerprint: "XXXX XXXX XXXX XXXX XXXX  XXXX XXXX XXXX XXXX XXXX"

@@ -9,7 +9,11 @@
       {{ .Content }}
     </div>
     <aside class="profile-card">
+      {{ with .Site.Params.avatar }}
+      <div class="profile-avatar profile-avatar-photo"><img src="{{ . | relURL }}" alt="{{ $.Site.Params.author }}"></div>
+      {{ else }}
       <div class="profile-avatar">{{ substr .Site.Params.author 0 1 }}</div>
+      {{ end }}
       <h3>{{ .Site.Params.author }}</h3>
       <p class="profile-role">{{ .Site.Params.tagline }}</p>
       <ul class="profile-links">

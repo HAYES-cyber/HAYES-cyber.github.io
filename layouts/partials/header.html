@@ -1,7 +1,11 @@
 <header class="site-header">
   <div class="wrap-wide">
     <a class="brand" href="{{ "/" | relLangURL }}">
-      <span class="brand-mark">B</span>
+      {{ with .Site.Params.avatar }}
+      <span class="brand-mark brand-mark-photo"><img src="{{ . | relURL }}" alt=""></span>
+      {{ else }}
+      <span class="brand-mark">{{ substr $.Site.Params.author 0 1 }}</span>
+      {{ end }}
       <span>{{ .Site.Params.author }}</span>
     </a>
     <nav aria-label="Main navigation">
