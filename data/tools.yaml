@@ -7,7 +7,17 @@
 #   repo_url      GitHub repo URL
 #   language      Primary language (optional)
 
-- name: "example-tool"
-  description: "Replace with a real tool you maintain, or delete this entry."
-  repo_url: "https://github.com/HAYES-cyber/example-tool"
+- name: "2026FastjsonPoC"
+  description: "Fastjson 1.2.x RCE verification scanner covering 151 gadget-chain/version combinations across the known public disclosure history; confirms exploitability via out-of-band command echo."
+  repo_url: "https://github.com/ThanatosXingYu/2026FastjsonPoC"
+  language: "Python / Java"
+
+- name: "iChunQiu-CTF-Collector"
+  description: "PySide6 desktop tool that collects public leaderboard data from i春秋 CTF competitions into a formatted Excel workbook."
+  repo_url: "https://github.com/ThanatosXingYu/iChunQiu-CTF-Collector"
+  language: "Python"
+
+- name: "ZhuLongAgent"
+  description: "Local command console for i春秋 CTF competitions: match management, attachment retrieval, and tool orchestration in one workspace."
+  repo_url: "https://github.com/ThanatosXingYu/ZhuLongAgent"
   language: "Python"
