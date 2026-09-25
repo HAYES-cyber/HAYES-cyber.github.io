@@ -3,7 +3,7 @@
 Personal security-research portfolio for **Bryce Alan Hayes** (GitHub: [HAYES-cyber](https://github.com/HAYES-cyber)), built to support an application to a certification/network program that reviews CVE records, bug bounty history, open-source tools, and education as evidence of active research.
 
 - Hugo static site, custom layouts under `layouts/`, no external theme.
-- Deployed via `.github/workflows/hugo.yml` to GitHub Pages at repo `HAYES-cyber/HAYES-cyber.github.io` → https://hayes-cyber.github.io/, branch `main`.
+- Deployed via `.github/workflows/hugo.yml` to GitHub Pages at repo `HAYES-cyber/HAYES-cyber.github.io` → served at https://brycealanhayes.com/ (custom domain, DNS + `static/CNAME` point at GitHub Pages), branch `main`.
 - Separate GitHub profile README template lives in `github-profile-readme/README.md`, meant for a standalone `HAYES-cyber/HAYES-cyber` repo (not yet created).
 
 ## Content rule — do not skip

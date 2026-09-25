@@ -3,24 +3,26 @@
 Security researcher focused on [research area, e.g. web application security & IoT firmware]. [Optional second sentence: current affiliation / what you're working on now.]
 
 - 🔭 Currently researching **[focus area]**
-- 📫 Reach me at **[you@example.com](mailto:you@example.com)** — PGP key on my [contact page](https://HAYES-cyber.github.io/contact/)
-- ✍️ Write-ups, CVE disclosures, and bounty reports: **[HAYES-cyber.github.io](https://HAYES-cyber.github.io)**
+- 📫 Reach me at **[you@example.com](mailto:you@example.com)** — PGP key on my [contact page](https://brycealanhayes.com/contact/)
+- ✍️ Write-ups, CVE disclosures, and bounty reports: **[brycealanhayes.com](https://brycealanhayes.com)**
 
 #### Selected CVEs
 
 | CVE | Product | Type |
 |---|---|---|
-| [CVE-0000-00000](https://www.cve.org/CVERecord?id=CVE-0000-00000) | Example Corp Widget Server 2.x | Authentication Bypass |
+| [CVE-2026-86665](https://www.cve.org/CVERecord?id=CVE-2026-86665) | aircheng-org iWebShop-5 | Missing Authorization |
+| [CVE-2026-86666](https://www.cve.org/CVERecord?id=CVE-2026-86666) | aircheng-org iWebShop-5 | Unrestricted Upload |
+| [CVE-2026-86667](https://www.cve.org/CVERecord?id=CVE-2026-86667) | aircheng-org iWebShop-5 | SQL Injection |
 
-Full list with CVSS scores, vendor advisories, and write-ups: [HAYES-cyber.github.io/cve](https://HAYES-cyber.github.io/cve/)
+Full list with CVSS scores, vendor advisories, and write-ups: [brycealanhayes.com/cve](https://brycealanhayes.com/cve/)
 
 #### Bug Bounty
 
-Public reports from HackerOne, YesWeHack, and Immunefi: [HAYES-cyber.github.io/bounty](https://HAYES-cyber.github.io/bounty/)
+Public reports from Kuaishou SRC and JD SRC: [brycealanhayes.com/bounty](https://brycealanhayes.com/bounty/)
 
 #### Links
 
-- Blog: [HAYES-cyber.github.io](https://HAYES-cyber.github.io)
+- Blog: [brycealanhayes.com](https://brycealanhayes.com)
 - GitHub: [github.com/HAYES-cyber](https://github.com/HAYES-cyber)
 - LinkedIn: [linkedin.com/in/USERNAME](#)
 - HackerOne: [hackerone.com/USERNAME](#)
