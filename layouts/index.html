@@ -26,20 +26,6 @@
   </div>
 </section>
 
-<div class="ticker" aria-hidden="true">
-  <div class="ticker-track">
-    {{ $tickerItems := slice }}
-    {{ range $cves }}{{ $tickerItems = $tickerItems | append .id }}{{ end }}
-    {{ range $tools }}{{ $tickerItems = $tickerItems | append .name }}{{ end }}
-    {{ range $bounties }}{{ $tickerItems = $tickerItems | append .platform }}{{ end }}
-    {{ range (seq 2) }}
-    <span class="ticker-set">
-      {{ range $tickerItems }}<span class="ticker-item">{{ . }}</span><span class="ticker-sep">§</span>{{ end }}
-    </span>
-    {{ end }}
-  </div>
-</div>
-
 <div class="wrap-wide">
   {{ if .Content }}<div class="home-intro">{{ .Content }}</div>{{ end }}
 

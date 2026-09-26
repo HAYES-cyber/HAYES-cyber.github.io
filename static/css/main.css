@@ -437,32 +437,6 @@ h1, h2, h3, h4 { letter-spacing: -0.01em; line-height: 1.2; font-weight: 600; }
   color: var(--fg-subtle);
 }
 
-/* ---------------------------------------------------------------------- */
-/* Ticker — real data (CVE ids, tool names, bounty platforms), not decor  */
-/* ---------------------------------------------------------------------- */
-.ticker {
-  overflow: hidden;
-  background: var(--fg);
-  padding: 13px 0;
-}
-.ticker-track { display: flex; width: max-content; animation: ticker-scroll 38s linear infinite; }
-.ticker:hover .ticker-track { animation-play-state: paused; }
-.ticker-set { display: flex; align-items: center; flex-shrink: 0; }
-.ticker-item {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  letter-spacing: 0.03em;
-  color: var(--bg);
-  white-space: nowrap;
-  padding: 0 12px;
-}
-.ticker-sep { color: var(--accent); font-family: var(--font-serif); font-style: italic; font-size: 1.1rem; }
-@keyframes ticker-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
-
 .home-intro { padding: 8px 0 8px; color: var(--fg-muted); }
 
 .home-section { padding: 52px 0; border-top: 1px solid var(--border); }
