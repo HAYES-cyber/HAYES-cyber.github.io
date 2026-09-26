@@ -38,7 +38,15 @@
 
   // Scroll reveal: fade/rise sections in as they enter the viewport.
   if (!reduceMotion && "IntersectionObserver" in window) {
-    var revealTargets = document.querySelectorAll(".home-section, .page-header, .about-layout, .post-header, .post-content > *");
+    // Deliberately excludes .post-content > * : gating each individual
+    // paragraph/heading behind its own scroll trigger left real content
+    // (About page evidence sections, etc.) at opacity:0 whenever something
+    // captured the page without a real scroll interaction -- full-page
+    // screenshots, fast PageDown/End jumps, and some crawlers never fire
+    // IntersectionObserver for elements far below the fold. Reveal the
+    // section shells only; prose content is visible as soon as its
+    // container is.
+    var revealTargets = document.querySelectorAll(".home-section, .page-header, .about-layout, .post-header");
     var io = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
@@ -54,5 +62,13 @@
       el.classList.add("reveal");
       io.observe(el);
     });
+    // Safety net: whatever the reason (slow JS init, a browser without
+    // reliable IntersectionObserver timing, a future reveal target that
+    // sits fully off-screen at load), nothing stays invisible forever.
+    setTimeout(function () {
+      document.querySelectorAll(".reveal:not(.in-view)").forEach(function (el) {
+        el.classList.add("in-view");
+      });
+    }, 2500);
   }
 })();
