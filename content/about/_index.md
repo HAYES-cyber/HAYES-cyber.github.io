@@ -44,4 +44,6 @@ Some of my disclosures are credited under a platform-specific reporter handle ra
   - CVE-2026-86667 → [VDB-399758](https://vuldb.com/vuln/399758) — "Submitter: yunshen", "Submit #908925 ... (by yunshen)" ([archived snapshot](/img/vuldb-evidence/vdb-399758-entry.png))
 
   The account's [public VulDB profile](https://vuldb.com/user/100191) (no login required, [archived snapshot](/img/vuldb-evidence/yunshen-profile.png)) rolls all three up in one place under "Submits (3)".
+
+  As a reverse check — proving the `yunshen` account is actually controlled by me, not just that my site claims it — I posted a comment as `yunshen` directly on the VDB-399756 and VDB-399757 discussion threads identifying myself as Bryce Alan Hayes / brycealanhayes.com ([archived snapshot, VDB-399756](/img/vuldb-evidence/vdb-399756-comment.png), [VDB-399757](/img/vuldb-evidence/vdb-399757-comment.png)). Those comments are queued for VulDB's manual moderation review before they appear publicly on the live page, so treat the archived screenshots as the record of when they were posted rather than proof they're visible yet.
 - **Bugcrowd handle: `equa1`** — see the [public profile](https://bugcrowd.com/h/equa1) linked above.
