@@ -117,6 +117,9 @@
       </li>
       {{ end }}
     </ul>
+    {{ with .Site.Params.bugcrowd }}
+    <p class="verify-note">These are private vendor SRC reports, each evidenced by the platform's own confirmation and acknowledgment screenshot. My publicly verifiable bug-bounty record — 8 validated vulnerabilities at 100% accuracy, with Hall of Fame recognition — is on <a href="{{ . }}" target="_blank" rel="noopener">Bugcrowd</a>.</p>
+    {{ end }}
     {{ else }}
     <p class="empty">No public reports yet.</p>
     {{ end }}
