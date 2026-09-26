@@ -1,6 +1,5 @@
 Contact: mailto:1092bunk@gmail.com
-# Optional: publish your PGP key and reference it here.
-# Encryption: https://brycealanhayes.com/pgp-key.txt
+Encryption: https://brycealanhayes.com/pgp-key.txt
 Preferred-Languages: en
 Canonical: https://brycealanhayes.com/.well-known/security.txt
 Expires: 2027-01-01T00:00:00.000Z

@@ -61,7 +61,7 @@ params:
   avatar: "/img/avatar.jpg"
   tagline: "Security researcher working both sides of AI and offense — using AI-assisted methodology to accelerate vulnerability research, and studying the security of AI systems themselves."
   email: "1092bunk@gmail.com"
-  pgpFingerprint: ""
+  pgpFingerprint: "6ACE DDF9 E66F 9504 005F  090F 02FF 4CA0 3D3A 3FBA"
   github: "https://github.com/HAYES-cyber"
   linkedin: ""
   hackerone: ""
