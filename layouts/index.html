@@ -7,6 +7,7 @@
 
 <section class="hero">
   <div class="hero-bg"></div>
+  <span class="hero-watermark" aria-hidden="true">§</span>
   <div class="wrap-wide">
     <div class="hero-kicker"><span class="dot"></span> Offense &amp; Defense Security Research</div>
     <h1>{{ .Site.Params.author }}<br><span class="accent">Security Research</span></h1>
@@ -25,6 +26,20 @@
   </div>
 </section>
 
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    {{ $tickerItems := slice }}
+    {{ range $cves }}{{ $tickerItems = $tickerItems | append .id }}{{ end }}
+    {{ range $tools }}{{ $tickerItems = $tickerItems | append .name }}{{ end }}
+    {{ range $bounties }}{{ $tickerItems = $tickerItems | append .platform }}{{ end }}
+    {{ range (seq 2) }}
+    <span class="ticker-set">
+      {{ range $tickerItems }}<span class="ticker-item">{{ . }}</span><span class="ticker-sep">§</span>{{ end }}
+    </span>
+    {{ end }}
+  </div>
+</div>
+
 <div class="wrap-wide">
   {{ if .Content }}<div class="home-intro">{{ .Content }}</div>{{ end }}
 
@@ -40,12 +55,15 @@
     <ul class="card-grid">
       {{ range first 3 $posts }}
       <li class="post-card">
-        <span class="post-card-date">{{ .Date.Format "2006-01-02" }} · {{ .ReadingTime }} min read</span>
-        <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
-        {{ if .Params.summary }}<p>{{ .Params.summary }}</p>{{ else }}<p></p>{{ end }}
-        {{ with .Params.tags }}
-        <div class="post-card-tags">{{ range first 3 . }}<span class="tag">#{{ . }}</span>{{ end }}</div>
-        {{ end }}
+        <div class="cover" aria-hidden="true"><span class="cover-mark">§</span></div>
+        <div class="post-card-body">
+          <span class="post-card-date">{{ .Date.Format "2006-01-02" }} · {{ .ReadingTime }} min read</span>
+          <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
+          {{ if .Params.summary }}<p>{{ .Params.summary }}</p>{{ else }}<p></p>{{ end }}
+          {{ with .Params.tags }}
+          <div class="post-card-tags">{{ range first 3 . }}<span class="tag">#{{ . }}</span>{{ end }}</div>
+          {{ end }}
+        </div>
       </li>
       {{ end }}
     </ul>

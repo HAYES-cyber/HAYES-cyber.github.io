@@ -7,15 +7,18 @@
   {{ $pages := .Paginator.Pages }}
   {{ if $pages }}
   <div class="page-stats"><span class="pill">{{ .Paginator.TotalNumberOfElements }} posts</span></div>
-  <ul class="card-grid">
+  <ul class="post-list post-list-covered">
     {{ range $pages }}
-    <li class="post-card">
-      <span class="post-card-date">{{ .Date.Format "2006-01-02" }}{{ if .ReadingTime }} · {{ .ReadingTime }} min read{{ end }}</span>
-      <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
-      {{ if .Params.summary }}<p>{{ .Params.summary }}</p>{{ else }}<p></p>{{ end }}
-      {{ with .Params.tags }}
-      <div class="post-card-tags">{{ range first 3 . }}<span class="tag">#{{ . }}</span>{{ end }}</div>
-      {{ end }}
+    <li>
+      <div class="cover" aria-hidden="true"><span class="cover-mark">§</span></div>
+      <div class="post-list-body">
+        <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+        <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}{{ if .ReadingTime }} · {{ .ReadingTime }} min read{{ end }}</time>
+        {{ if .Params.summary }}<p>{{ .Params.summary }}</p>{{ end }}
+        {{ with .Params.tags }}
+        <div class="post-card-tags">{{ range first 3 . }}<span class="tag">#{{ . }}</span>{{ end }}</div>
+        {{ end }}
+      </div>
     </li>
     {{ end }}
   </ul>
