@@ -16,6 +16,7 @@
       <a class="btn btn-primary" href="{{ "/research/" | relURL }}">Read the research {{ partial "icon.html" "arrow-right" }}</a>
       <a class="btn btn-outline" href="{{ "/cve/" | relURL }}">View CVE disclosures</a>
       {{ with .Site.Params.github }}<a class="btn btn-outline" href="{{ . }}" target="_blank" rel="noopener">{{ partial "icon.html" "github" }} GitHub</a>{{ end }}
+      {{ with .Site.Params.bugcrowd }}<a class="btn btn-outline" href="{{ . }}" target="_blank" rel="noopener">{{ partial "icon.html" "bug" }} Bugcrowd Profile</a>{{ end }}
     </div>
     <div class="stat-row">
       <div class="stat-card"><span class="num">{{ len $cves }}</span><span class="label">CVE disclosures</span></div>
