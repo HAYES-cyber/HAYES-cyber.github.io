@@ -18,12 +18,6 @@
       {{ with .Site.Params.github }}<a class="btn btn-outline" href="{{ . }}" target="_blank" rel="noopener">{{ partial "icon.html" "github" }} GitHub</a>{{ end }}
       {{ with .Site.Params.bugcrowd }}<a class="btn btn-outline" href="{{ . }}" target="_blank" rel="noopener">{{ partial "icon.html" "bug" }} Bugcrowd Profile</a>{{ end }}
     </div>
-    <div class="stat-row">
-      <div class="stat-card"><span class="num">{{ len $cves }}</span><span class="label">CVE disclosures</span></div>
-      <div class="stat-card"><span class="num">{{ len $bounties }}</span><span class="label">Bounty reports</span></div>
-      <div class="stat-card"><span class="num">{{ len $tools }}</span><span class="label">OSS tools</span></div>
-      <div class="stat-card"><span class="num">{{ len $posts }}</span><span class="label">Write-ups</span></div>
-    </div>
   </div>
 </section>
 
