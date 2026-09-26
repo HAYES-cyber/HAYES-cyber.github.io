@@ -17,12 +17,12 @@
   repo_url: "https://github.com/HAYES-cyber/2026FastjsonPoC"
   language: "Python / Java"
 
-- name: "iChunQiu-CTF-Collector"
-  description: "PySide6 desktop tool that collects public leaderboard data from i春秋 CTF competitions into a formatted Excel workbook."
-  repo_url: "https://github.com/HAYES-cyber/iChunQiu-CTF-Collector"
+- name: "ctftime-collector"
+  description: "PySide6 desktop tool that collects public team-ranking and event data from CTFtime.org (the aggregator behind most US/international CTFs) into a formatted Excel workbook."
+  repo_url: "https://github.com/HAYES-cyber/ctftime-collector"
   language: "Python"
 
-- name: "ZhuLongAgent"
-  description: "Local command console for i春秋 CTF competitions: match management, attachment retrieval, and tool orchestration in one workspace."
-  repo_url: "https://github.com/HAYES-cyber/ZhuLongAgent"
+- name: "ctfd-console"
+  description: "Local command console for CTFd-based competitions (the platform most US CTFs run on): workspace-based match management, attachment retrieval, and tool orchestration in one CLI."
+  repo_url: "https://github.com/HAYES-cyber/ctfd-console"
   language: "Python"
