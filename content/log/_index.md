@@ -24,12 +24,12 @@ Also finally wrote up the [Spring DispatcherServlet routing-bypass piece](/resea
 
 ## March 2026
 
-The actual turning point. I started taking remote AI Red Team engagements through [Mercor](https://mercor.com) — adversarial jailbreak and prompt-injection testing against frontier models. By that point I'd been doing manual bug hunting for about a year and a half, and watching a model get through defenses faster than I could by hand was what got me paying attention to AI security as its own subject, not just a tool for accelerating the same old web app work.
+The turning point. Once AI tooling got good enough, I started experimenting with it against real, authorized targets — and was genuinely surprised by how much it turned up. Watching AI-assisted methodology get a foothold faster than I could by hand is what got me treating AI security as its own subject, not just a tool for speeding up the same old web app work.
 
 ## 2024 – 2025
 
-Bug bounty work on [Bugcrowd](https://bugcrowd.com/h/Bryce_Alan_Hayes) picked up through this period, mostly against web application targets — Hall of Fame recognition on Pantheon and HostGator LATAM Bug Bounty among the programs I tested against.
+Bug bounty work on [Bugcrowd](https://bugcrowd.com/h/Bryce_Alan_Hayes) picked up through this period, mostly against web application targets — Hall of Fame recognition on Pantheon and HostGator LATAM Bug Bounty among the programs I tested against. This was all manual and done on the side, whenever I had time; no AI involved yet — that came later.
 
-**Summer 2024**, junior year: interned with SecureWorks' threat intelligence team out of their Atlanta headquarters. This is where the manual-testing fundamentals actually got built — working attack surfaces by hand, reading source, testing authorization paths branch by branch. No AI involved yet; that came later.
+**Summer 2024**, junior year: interned with SecureWorks' threat intelligence team out of their Atlanta headquarters — vulnerability research and threat hunting. This is where the manual-testing fundamentals actually got built: working attack surfaces by hand, reading source, testing authorization paths branch by branch. A lot of my [research write-ups](/research/) are me consolidating what I picked up through this period; I've just kept adding to them since.
 
 **2025**: graduated from Georgia Gwinnett College with a B.S. in Information Science and Technology, concentrating in systems and network security.

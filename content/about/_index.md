@@ -4,13 +4,15 @@ title: "About"
 
 ## Background
 
-I'm a security researcher working across both offense and defense. I graduated from Georgia Gwinnett College in 2025 with a background in Information Science and Technology, concentrating in systems and network security. During undergrad I interned with SecureWorks' threat intelligence team at their Atlanta headquarters, doing vulnerability research and threat hunting — the year that built my manual bug-hunting fundamentals: working attack surfaces by hand, reading source, and testing authorization and business-logic paths branch by branch to find real vulnerabilities. That manual work is documented on my [Bugcrowd profile](https://bugcrowd.com/h/Bryce_Alan_Hayes) — 8 validated vulnerabilities at 100% accuracy, with Hall of Fame recognition on Pantheon and HostGator LATAM Bug Bounty.
+I'm a security researcher focused on AI-assisted vulnerability research.
 
-The turning point came in **March 2026**, when I started porting that red-team methodology onto LLMs. I've taken remote AI Red Team engagements — through platforms like Mercor — running adversarial jailbreak and prompt-injection testing against frontier models (I built [promptprobe](https://github.com/HAYES-cyber/promptprobe) to automate the baseline sweep for that work), while in parallel folding AI tooling into my own vulnerability research: AI-assisted attack-surface mapping, code-audit assistance, payload generation, and attack-chain reasoning — a methodology I've written up in detail in [AI Coding Agent Workbench](/research/ai-agent-workbench/). The efficiency gain wasn't incremental; targets that used to take days to get a foothold on now take hours.
+I first got hands-on with security during an internship on SecureWorks' threat intelligence team in Atlanta, doing vulnerability research and threat hunting — that's where I built my manual fundamentals: working attack surfaces by hand, reading source, and testing authorization and business-logic paths branch by branch. Alongside that I did authorized vulnerability testing on the side, mostly bug bounty work on my [Bugcrowd profile](https://bugcrowd.com/h/Bryce_Alan_Hayes) — 8 validated vulnerabilities at 100% accuracy, with Hall of Fame recognition on Pantheon and HostGator LATAM Bug Bounty. A lot of my [research write-ups](/research/) are me consolidating what I learned through that period.
 
-That experience raised an obvious follow-up question: if AI can attack systems this effectively, how secure is the AI itself? My research now runs on two tracks — using AI-assisted methodology to accelerate traditional vulnerability research (web application security, authorization bypasses, deserialization/RCE), and studying the security of AI systems themselves: prompt injection, adversarial robustness, RAG data exposure, AI agent authorization boundaries, and supply-chain risk hidden in AI-generated code.
+What changed things was AI. Once capable AI tooling arrived, I started experimenting — pointing it at real, authorized targets to see how far AI-assisted hunting could actually go — and was genuinely surprised by how well it worked. It turned up real, credited findings: three CVEs in aircheng-org iWebShop-5 (CVE-2026-86665/86666/86667), plus a series of vulnerabilities disclosed through vendor Security Response Centers — Kuaishou SRC (Kling AI) and JD SRC (JD Cloud Lingjing AI). I've written up how I actually use this tooling, end to end, in [AI Coding Agent Workbench](/research/ai-agent-workbench/).
 
-My background also includes vulnerability disclosure through vendor Security Response Centers (Kuaishou SRC, JD SRC) and CVE-credited findings in open-source projects.
+The pace since then has been fast, and I want to keep contributing to security. My goal is to use AI to make more meaningful contributions and to build the tooling that supports that work — I've published some of the tools I'd been maintaining on my [GitHub](https://github.com/HAYES-cyber) (including [promptprobe](https://github.com/HAYES-cyber/promptprobe)), and I plan to build more AI-assisted security tools from here.
+
+My work runs on two tracks: using AI-assisted methodology to accelerate traditional vulnerability research (web application security, authorization bypasses, deserialization/RCE), and studying the security of AI systems themselves — prompt injection, adversarial robustness, RAG data exposure, AI agent authorization boundaries, and supply-chain risk in AI-generated code.
 
 ## Research Focus
 
@@ -23,8 +25,9 @@ My background also includes vulnerability disclosure through vendor Security Res
 
 ## Experience
 
-- **March 2026 – Present** — AI Red Teamer (remote, via Mercor) — adversarial jailbreak and prompt-injection testing against frontier LLMs
+- **Independent security research** — AI-assisted vulnerability discovery: three CVEs (CVE-2026-86665/86666/86667) via VulDB's CNA process, and vulnerability disclosures through Kuaishou SRC and JD SRC
 - **Summer 2024 (Junior Year)** — Threat Intelligence Intern — SecureWorks (Atlanta, GA) — vulnerability research and threat hunting
+- **Bug bounty** — [Bugcrowd](https://bugcrowd.com/h/Bryce_Alan_Hayes): 8 validated vulnerabilities, 100% accuracy, Hall of Fame recognition
 
 ## Education
 
