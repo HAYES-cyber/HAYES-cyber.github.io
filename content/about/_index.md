@@ -51,4 +51,4 @@ Some of my disclosures are credited under a platform-specific reporter handle ra
   - [VDB-399758 discussion](https://vuldb.com/vuln/399758#comments) (CVE-2026-86667) — comment published, moderation status Accepted
 
   Archived snapshots of the submissions are also kept locally ([VDB-399756](/img/vuldb-evidence/vdb-399756-comment.png), [VDB-399757](/img/vuldb-evidence/vdb-399757-comment.png)) but the live VulDB links above are the authoritative source.
-- **Bugcrowd** — the [public profile](https://bugcrowd.com/h/Bryce_Alan_Hayes) is now under my real name directly, with a reciprocal link back to brycealanhayes.com in its Website field. (It was previously under the handle `equa1`.)
+- **Bugcrowd** — the [public profile](https://bugcrowd.com/h/Bryce_Alan_Hayes) is under my real name directly, with a reciprocal link back to brycealanhayes.com in its Website field.
