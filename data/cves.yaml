@@ -21,7 +21,7 @@
   type: "Missing Authorization (CWE-862)"
   cvss: "7.3 (CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L/E:P/RL:X/RC:R)"
   cve_url: "https://www.cve.org/CVERecord?id=CVE-2026-86665"
-  advisory_url: "https://github.com/aircheng-org/iWebShop-5/issues/2"
+  advisory_url: "https://vuldb.com/vuln/399756"
   writeup_url: ""
   date: "2026-09-08"
 
@@ -30,7 +30,7 @@
   type: "Unrestricted Upload (CWE-434)"
   cvss: "7.3 (CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L/E:P/RL:X/RC:R)"
   cve_url: "https://www.cve.org/CVERecord?id=CVE-2026-86666"
-  advisory_url: "https://github.com/aircheng-org/iWebShop-5/issues/3"
+  advisory_url: "https://vuldb.com/vuln/399757"
   writeup_url: ""
   date: "2026-09-08"
 
@@ -39,6 +39,6 @@
   type: "SQL Injection (CWE-89)"
   cvss: "4.7 (CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:L/I:L/A:L/E:P/RL:X/RC:R)"
   cve_url: "https://www.cve.org/CVERecord?id=CVE-2026-86667"
-  advisory_url: "https://github.com/aircheng-org/iWebShop-5/issues/5"
+  advisory_url: "https://vuldb.com/vuln/399758"
   writeup_url: ""
   date: "2026-09-08"
