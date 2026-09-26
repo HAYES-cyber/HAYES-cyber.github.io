@@ -38,5 +38,10 @@ My background also includes vulnerability disclosure through vendor Security Res
 
 Some of my disclosures are credited under a platform-specific reporter handle rather than my real name. For verification purposes, here's the mapping:
 
-- **VulDB / CVE reporter handle: `yunshen`** ("云深" on the Chinese-localized CVE record) — this is the reporter credited in the official [Acknowledgments](https://www.cve.org/CVERecord?id=CVE-2026-86666) section of CVE-2026-86665/86666/86667. The account's [public VulDB profile](https://vuldb.com/user/100191) (no login required, [archived snapshot](/img/vuldb-evidence/yunshen-profile.png)) shows the same three accepted submissions (VDB-399756/399757/399758) against `aircheng-org iWebShop-5` that back those CVEs.
+- **VulDB / CVE reporter handle: `yunshen`** ("云深" on the Chinese-localized CVE record) — this is the reporter credited in the official [Acknowledgments](https://www.cve.org/CVERecord?id=CVE-2026-86666) section of CVE-2026-86665/86666/86667. Each VulDB entry backing those CVEs publicly states the submitter directly, no login required:
+  - CVE-2026-86665 → [VDB-399756](https://vuldb.com/vuln/399756) — "Submitter: yunshen", "Submit #908923 ... (by yunshen)" ([archived snapshot](/img/vuldb-evidence/vdb-399756-entry.png))
+  - CVE-2026-86666 → [VDB-399757](https://vuldb.com/vuln/399757) — "Submitter: yunshen", "Submit #908924 ... (by yunshen)" ([archived snapshot](/img/vuldb-evidence/vdb-399757-entry.png))
+  - CVE-2026-86667 → [VDB-399758](https://vuldb.com/vuln/399758) — "Submitter: yunshen", "Submit #908925 ... (by yunshen)" ([archived snapshot](/img/vuldb-evidence/vdb-399758-entry.png))
+
+  The account's [public VulDB profile](https://vuldb.com/user/100191) (no login required, [archived snapshot](/img/vuldb-evidence/yunshen-profile.png)) rolls all three up in one place under "Submits (3)".
 - **Bugcrowd handle: `equa1`** — see the [public profile](https://bugcrowd.com/h/equa1) linked above.
