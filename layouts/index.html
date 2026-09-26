@@ -75,7 +75,10 @@
       <li class="advisory-row">
         <span class="advisory-bar"></span>
         <div class="advisory-main">
-          <a class="advisory-id" href="{{ .advisory_url }}#comments" target="_blank" rel="noopener" title="VulDB entry — reporter yunshen's self-identification comment">{{ .id }}</a>
+          <span class="advisory-id-row">
+            <a class="advisory-id" href="{{ .cve_url }}" target="_blank" rel="noopener">{{ .id }}</a>
+            <a class="id-verify" href="{{ .advisory_url }}#comments" target="_blank" rel="noopener" title="Reporter handle yunshen — my public self-identification comment on the VulDB entry">&#10003; reported by me (yunshen)</a>
+          </span>
           <span class="advisory-title"><a href="{{ .cve_url }}" target="_blank" rel="noopener">{{ .product }}</a></span>
           <span class="advisory-meta">{{ .type }}</span>
         </div>
@@ -117,7 +120,7 @@
       {{ end }}
     </ul>
     {{ with .Site.Params.bugcrowd }}
-    <p class="verify-note">These are private vendor SRC reports, each evidenced by the platform's own confirmation and acknowledgment screenshot. My publicly verifiable bug-bounty record — 8 validated vulnerabilities at 100% accuracy, with Hall of Fame recognition — is on <a href="{{ . }}" target="_blank" rel="noopener">Bugcrowd</a>.</p>
+    <p class="verify-note">These are private vendor SRC reports, each backed by the platform's own confirmation and acknowledgment screenshot. My public bug-bounty record is on <a href="{{ . }}" target="_blank" rel="noopener">Bugcrowd</a> <a class="id-verify" href="{{ . }}" target="_blank" rel="noopener" title="Public Bugcrowd profile under my real name, with a reciprocal link back to this site">&#10003; verified as mine</a> — a profile under my real name that links back to this site, so it independently ties this work to me: 8 validated vulnerabilities at 100% accuracy, with Hall of Fame recognition.</p>
     {{ end }}
     {{ else }}
     <p class="empty">No public reports yet.</p>
