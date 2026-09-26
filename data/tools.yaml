@@ -12,11 +12,6 @@
   repo_url: "https://github.com/HAYES-cyber/promptprobe"
   language: "Python"
 
-- name: "2026FastjsonPoC"
-  description: "Fastjson 1.2.x RCE verification scanner covering 151 gadget-chain/version combinations across the known public disclosure history; confirms exploitability via out-of-band command echo."
-  repo_url: "https://github.com/HAYES-cyber/2026FastjsonPoC"
-  language: "Python / Java"
-
 - name: "ctftime-collector"
   description: "PySide6 desktop tool that collects public team-ranking and event data from CTFtime.org (the aggregator behind most US/international CTFs) into a formatted Excel workbook."
   repo_url: "https://github.com/HAYES-cyber/ctftime-collector"
