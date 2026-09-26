@@ -48,12 +48,15 @@ menu:
     - name: "Research"
       url: "/research/"
       weight: 6
+    - name: "Log"
+      url: "/log/"
+      weight: 7
     - name: "Talks"
       url: "/talks/"
-      weight: 7
+      weight: 8
     - name: "Contact"
       url: "/contact/"
-      weight: 8
+      weight: 9
 
 params:
   author: "Bryce Alan Hayes"
