@@ -26,7 +26,7 @@ The actual turning point. I started taking remote AI Red Team engagements throug
 
 ## 2024 – 2025
 
-Bug bounty work on [Bugcrowd](https://bugcrowd.com/h/equa1) (handle `equa1`) picked up through this period, mostly against web application targets — Hall of Fame recognition on Pantheon and HostGator LATAM Bug Bounty among the programs I tested against.
+Bug bounty work on [Bugcrowd](https://bugcrowd.com/h/Bryce_Alan_Hayes) picked up through this period, mostly against web application targets — Hall of Fame recognition on Pantheon and HostGator LATAM Bug Bounty among the programs I tested against.
 
 **Summer 2024**, junior year: interned with SecureWorks' threat intelligence team out of their Atlanta headquarters. This is where the manual-testing fundamentals actually got built — working attack surfaces by hand, reading source, testing authorization paths branch by branch. No AI involved yet; that came later.
 

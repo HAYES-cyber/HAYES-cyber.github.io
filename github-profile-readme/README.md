@@ -20,7 +20,7 @@ Full list with CVSS scores, vendor advisories, and write-ups: [brycealanhayes.co
 #### Bug Bounty
 
 - Public reports from Kuaishou SRC and JD SRC: [brycealanhayes.com/bounty](https://brycealanhayes.com/bounty/)
-- [Bugcrowd profile](https://bugcrowd.com/h/equa1) — 8 validated vulnerabilities, 100% accuracy, Hall of Fame on Pantheon and HostGator LATAM Bug Bounty
+- [Bugcrowd profile](https://bugcrowd.com/h/Bryce_Alan_Hayes) — 8 validated vulnerabilities, 100% accuracy, Hall of Fame on Pantheon and HostGator LATAM Bug Bounty
 
 #### Tools
 
@@ -31,4 +31,4 @@ Full list with CVSS scores, vendor advisories, and write-ups: [brycealanhayes.co
 
 - Blog: [brycealanhayes.com](https://brycealanhayes.com)
 - GitHub: [github.com/HAYES-cyber](https://github.com/HAYES-cyber)
-- Bugcrowd: [bugcrowd.com/h/equa1](https://bugcrowd.com/h/equa1)
+- Bugcrowd: [bugcrowd.com/h/Bryce_Alan_Hayes](https://bugcrowd.com/h/Bryce_Alan_Hayes)
