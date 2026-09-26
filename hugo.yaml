@@ -39,7 +39,7 @@ menu:
     - name: "CVE"
       url: "/cve/"
       weight: 3
-    - name: "Bounty"
+    - name: "SRC"
       url: "/bounty/"
       weight: 4
     - name: "Tools"

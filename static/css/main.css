@@ -193,6 +193,18 @@ h1, h2, h3, h4 { letter-spacing: -0.01em; line-height: 1.2; font-weight: 600; }
   font-size: 0.92rem;
 }
 
+.verify-note {
+  margin: 14px 0 0;
+  padding: 12px 16px;
+  border-left: 2px solid var(--accent);
+  background: var(--bg-alt);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 0.86rem;
+  color: var(--fg-muted);
+  line-height: 1.55;
+}
+.verify-note a { font-weight: 500; }
+
 /* Buttons */
 .btn {
   display: inline-flex;
