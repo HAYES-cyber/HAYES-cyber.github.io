@@ -45,5 +45,10 @@ Some of my disclosures are credited under a platform-specific reporter handle ra
 
   The account's [public VulDB profile](https://vuldb.com/user/100191) (no login required, [archived snapshot](/img/vuldb-evidence/yunshen-profile.png)) rolls all three up in one place under "Submits (3)".
 
-  As a reverse check — intended to prove the `yunshen` account is actually controlled by me, not just that my site claims it — I submitted a comment as `yunshen` on the VDB-399756 and VDB-399757 discussion threads identifying myself as Bryce Alan Hayes / brycealanhayes.com. **As of this writing those comments are still queued for VulDB's manual moderation and are not yet publicly visible** — the linked screenshots ([VDB-399756](/img/vuldb-evidence/vdb-399756-comment.png), [VDB-399757](/img/vuldb-evidence/vdb-399757-comment.png)) show submission, not publication, so a reviewer should treat this specific reverse-check as pending rather than confirmed until the comments actually go live on VulDB.
+  As a reverse check — intended to prove the `yunshen` account is actually controlled by me, not just that my site claims it — I posted a comment as `yunshen` on the VulDB discussion threads identifying myself as Bryce Alan Hayes / brycealanhayes.com. **Two of these are now published and public on VulDB** (no login required), so a reviewer can read the reporter's own self-identification directly on the primary source:
+  - [VDB-399756 discussion](https://vuldb.com/vuln/399756#comments) (CVE-2026-86665) — comment published, moderation status Accepted
+  - [VDB-399757 discussion](https://vuldb.com/vuln/399757#comments) (CVE-2026-86666) — comment published, moderation status Accepted
+  - [VDB-399758 discussion](https://vuldb.com/vuln/399758#comments) (CVE-2026-86667) — comment submitted, still awaiting VulDB moderation as of this writing
+
+  Archived snapshots of the submissions are also kept locally ([VDB-399756](/img/vuldb-evidence/vdb-399756-comment.png), [VDB-399757](/img/vuldb-evidence/vdb-399757-comment.png)) but the live VulDB links above are the authoritative source.
 - **Bugcrowd** — the [public profile](https://bugcrowd.com/h/Bryce_Alan_Hayes) is now under my real name directly, with a reciprocal link back to brycealanhayes.com in its Website field. (It was previously under the handle `equa1`.)
